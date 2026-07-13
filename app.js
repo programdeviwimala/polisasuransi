@@ -1336,13 +1336,14 @@ async function sharePdfTandaTerima(item) {
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // BUAT KONTAINER SEMENTARA YANG TERJAMIN TAMPIL (DISPLAY BLOCK & WIDTH EKSPLESIT)
+    // BUAT KONTAINER SEMENTARA YANG TERJAMIN TAMPIL DI VIEWPORT (DI BELAKANG LAYAR UTAMA)
     const tempContainer = document.createElement("div");
-    tempContainer.style.position = "absolute";
-    tempContainer.style.left = "-9999px";
+    tempContainer.style.position = "fixed";
+    tempContainer.style.left = "0";
     tempContainer.style.top = "0";
-    tempContainer.style.width = "750px";
-    tempContainer.style.padding = "24px";
+    tempContainer.style.width = "794px"; // Ukuran A4 standar lebar
+    tempContainer.style.zIndex = "-9999"; // Sembunyikan di bawah elemen aplikasi utama
+    tempContainer.style.padding = "30px";
     tempContainer.style.background = "#ffffff";
     tempContainer.style.fontFamily = "'Plus Jakarta Sans', Arial, sans-serif";
     tempContainer.style.color = "#1e293b";
@@ -1353,10 +1354,13 @@ async function sharePdfTandaTerima(item) {
     // Sisipkan kontainer sementara ke body agar di-render oleh browser
     document.body.appendChild(tempContainer);
 
+    // Beri waktu 300ms agar browser memproses tata letak/layout & render Base64
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     try {
         const blob = await html2pdf().from(tempContainer).set(opt).output('blob');
         
-        // Hapus kontainer sementara dari DOM
+        // Hapus kontainer sementara dari DOM setelah selesai
         document.body.removeChild(tempContainer);
 
         const file = new File([blob], `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`, { type: "application/pdf" });
