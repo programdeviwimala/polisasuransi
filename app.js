@@ -1297,7 +1297,7 @@ function setupExcelImport() {
             reader.onload = (evt) => {
                 try {
                     const data = new Uint8Array(evt.target.result);
-                    const workbook = XLSX.read(data, { type: "array", cellDates: true });
+                    const workbook = XLSX.read(data, { type: "array" });
                     
                     parsedExcelData = parseExcelSheet(workbook);
                     if (!parsedExcelData || parsedExcelData.length === 0) {
@@ -1479,30 +1479,14 @@ function formatTanggalPreview(dateStr) {
 }
 
 function parseExcelDate(val) {
-    if (!val) return null;
+    if (!val && val !== 0) return null;
     
-    // 1. Jika tipe data adalah Date object asli (SheetJS dengan cellDates: true)
-    if ((val instanceof Date || Object.prototype.toString.call(val) === '[object Date]') && !isNaN(val.getTime())) {
-        const y = val.getUTCFullYear();
-        const m = String(val.getUTCMonth() + 1).padStart(2, '0');
-        const d = String(val.getUTCDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+    // 1. Jika angka (Excel serial date number)
+    if (typeof val === 'number' && val > 0) {
+        return excelSerialToDate(val);
     }
     
-    // 2. Jika tipe data adalah number (Excel serial date number)
-    if (typeof val === 'number') {
-        try {
-            const date = XLSX.SSF.parse_date_code(val);
-            const y = date.y;
-            const m = String(date.m).padStart(2, '0');
-            const d = String(date.d).padStart(2, '0');
-            return `${y}-${m}-${d}`;
-        } catch (e) {
-            console.error("Gagal parse serial date:", e);
-        }
-    }
-    
-    // 3. Jika tipe data adalah string
+    // 2. Jika string
     const str = String(val).trim();
     if (!str) return null;
     
@@ -1511,7 +1495,7 @@ function parseExcelDate(val) {
         return str;
     }
     
-    // Cocokkan format DD/MM/YYYY atau MM/DD/YYYY atau DD-MM-YYYY
+    // Cocokkan format D/M/YYYY atau DD/MM/YYYY (Indonesian: day/month/year)
     const dmyRegex = /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/;
     const match = str.match(dmyRegex);
     if (match) {
@@ -1524,16 +1508,31 @@ function parseExcelDate(val) {
         return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
     }
     
-    // Coba parser JS Date bawaan
-    const parsedDate = new Date(str);
-    if (!isNaN(parsedDate.getTime())) {
-        const y = parsedDate.getFullYear();
-        const m = String(parsedDate.getMonth() + 1).padStart(2, '0');
-        const d = String(parsedDate.getDate()).padStart(2, '0');
-        return `${y}-${m}-${d}`;
+    return null;
+}
+
+function excelSerialToDate(serial) {
+    // Excel date serial ke tanggal YYYY-MM-DD tanpa pengaruh timezone
+    // Serial 1 = 1 Januari 1900 (Excel menghitung leap year 1900 secara salah, jadi serial 60 = bug, 61 = 1 Maret 1900)
+    if (serial < 1) return null;
+    
+    // Koreksi untuk bug leap year 1900 Excel
+    let adjustedSerial = serial;
+    if (serial >= 60) {
+        adjustedSerial = serial - 1; // Skip serial 60 (29 Feb 1900 yang tidak nyata)
     }
     
-    return null;
+    // Basis: 1 Januari 1900 = serial 1
+    // Konversi ke hari sejak 31 Desember 1899 (Unix epoch dari Excel)
+    const msPerDay = 86400000;
+    const excelEpoch = new Date(Date.UTC(1899, 11, 31)); // 31 Des 1899 UTC
+    const dateMs = excelEpoch.getTime() + adjustedSerial * msPerDay;
+    const d = new Date(dateMs);
+    
+    const y = d.getUTCFullYear();
+    const m = String(d.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
 }
 
 function parseExcelSheet(workbook) {
@@ -1646,6 +1645,18 @@ function parseExcelSheet(workbook) {
             const jangka_waktu = parseInt(String(jwRaw).replace(/[^0-9]/g, "")) || 0;
             const periode_awal = parseExcelDate(tglAwalRaw);
             const periode_akhir = parseExcelDate(tglAkhirRaw);
+            
+            // Debug: tampilkan nilai raw tanggal untuk baris pertama data
+            if (i === dataStartRowIndex) {
+                const debugInfo = document.getElementById("excel-debug-info");
+                if (debugInfo) {
+                    const existingContent = debugInfo.innerHTML;
+                    debugInfo.innerHTML = existingContent + 
+                        `<br><strong>Debug Tanggal (Baris Pertama Data):</strong><br>` +
+                        `• Raw Awal: <em>${JSON.stringify(tglAwalRaw)}</em> (type: ${typeof tglAwalRaw}) → Hasil: <strong>${periode_awal}</strong><br>` +
+                        `• Raw Akhir: <em>${JSON.stringify(tglAkhirRaw)}</em> (type: ${typeof tglAkhirRaw}) → Hasil: <strong>${periode_akhir}</strong>`;
+                }
+            }
             
             let bunga = parseFloat(String(bungaRaw).replace(/[^0-9\.\,]/g, "").replace(",", ".")) || 0;
             if (bunga > 0 && bunga < 1) {
