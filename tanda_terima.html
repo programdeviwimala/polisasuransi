@@ -56,15 +56,21 @@
             background: #1d4ed8;
         }
         @media print {
+            body * {
+                visibility: visible !important;
+            }
             body {
                 background: white;
                 padding: 0;
+                display: block !important;
             }
             .receipt-container {
                 box-shadow: none;
                 border: none;
                 padding: 0;
                 max-width: 100%;
+                width: 100% !important;
+                position: static !important;
             }
             .btn-print-public {
                 display: none !important;
