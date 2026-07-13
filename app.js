@@ -1418,29 +1418,6 @@ async function sharePdfTandaTerima(item) {
         if (document.head.contains(style)) document.head.removeChild(style);
         alert("Terjadi kesalahan saat menyiapkan PDF.");
     } finally {
-
-        const file = new File([blob], `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`, { type: "application/pdf" });
-
-        // Cek dukungan Web Share API untuk sharing file
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                files: [file],
-                title: `Tanda Terima - ${nasabah.nama_nasabah || 'Nasabah'}`,
-                text: `Berikut file PDF tanda terima polis asuransi Anda.`
-            });
-        } else {
-            // Fallback: Unduh otomatis di desktop
-            html2pdf().from(printArea).set(opt).save();
-            alert("Browser tidak mendukung share langsung. File PDF tanda terima telah diunduh otomatis. Silakan kirim file tersebut manual ke WhatsApp.");
-        }
-    } catch (err) {
-        console.error("Gagal ekspor PDF:", err);
-        // Hapus kontainer jika error
-        if (document.body.contains(tempContainer)) {
-            document.body.removeChild(tempContainer);
-        }
-        alert("Terjadi kesalahan saat menyiapkan PDF.");
-    } finally {
         btnShare.disabled = false;
         btnShare.innerHTML = originalText;
     }
