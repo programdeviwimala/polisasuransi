@@ -192,6 +192,7 @@ function renderNavigation() {
             btnInput.classList.add("active");
             showSection("section-input-nasabah");
             resetFormInput();
+            populateMarketingDropdowns();
         };
         navActions.appendChild(btnInput);
 
@@ -2080,7 +2081,7 @@ window.openEditNasabahModal = async function(event, nasabahId) {
 
         document.getElementById("edit-nasabah-id").value = nasabah.id;
         document.getElementById("edit-nama").value = nasabah.nama_nasabah || "";
-        document.getElementById("edit-marketing").value = nasabah.nama_marketing || "";
+        // edit-marketing diisi oleh populateMarketingDropdowns() di bawah
         document.getElementById("edit-pk").value = nasabah.no_pk || "";
         document.getElementById("edit-plafond").value = nasabah.plafond || "";
         document.getElementById("edit-jangka").value = nasabah.jangka_waktu || "";
@@ -2134,6 +2135,8 @@ window.openEditNasabahModal = async function(event, nasabahId) {
             editJaminanContainer.appendChild(box);
         });
 
+        // Isi dropdown marketing dulu, lalu set nilai yang tersimpan
+        await populateMarketingDropdowns(nasabah.nama_marketing);
         modalEditNasabah.classList.add("active");
     } catch (err) {
         console.error("Gagal buka modal edit:", err);
@@ -2192,6 +2195,45 @@ formEditNasabah.addEventListener("submit", async (e) => {
         btnSave.innerHTML = originalText;
     }
 });
+
+// ==========================================
+// DROPDOWN MARKETING DARI USER LAPANGAN
+// ==========================================
+async function populateMarketingDropdowns(selectedValue = "") {
+    try {
+        const { data: users, error } = await supabaseClient
+            .from("pengguna")
+            .select("username")
+            .eq("role", "lapangan")
+            .order("username", { ascending: true });
+
+        if (error) throw error;
+
+        // Daftar dropdown yang perlu diisi
+        const dropdownIds = ["nasabah-marketing", "edit-marketing"];
+
+        dropdownIds.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+
+            // Simpan nilai terpilih sebelumnya (jika ada)
+            const currentVal = selectedValue || select.value;
+
+            // Reset & isi ulang
+            select.innerHTML = `<option value="">-- Pilih Marketing --</option>`;
+            (users || []).forEach(u => {
+                const opt = document.createElement("option");
+                opt.value = u.username;
+                opt.textContent = u.username;
+                if (u.username === currentVal) opt.selected = true;
+                select.appendChild(opt);
+            });
+        });
+    } catch (err) {
+        console.error("Gagal mengambil daftar marketing:", err);
+    }
+}
+
 
 
 
