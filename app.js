@@ -1327,35 +1327,39 @@ async function sharePdfTandaTerima(item) {
         </div>
     `;
 
-    // Konfigurasi html2pdf
+    // Konfigurasi html2pdf dengan onclone handler untuk menampilkan elemen tersembunyi saat proses cetak
     const opt = {
         margin:       10,
         filename:     `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            onclone: function(clonedDoc) {
+                const el = clonedDoc.getElementById("temp-pdf-container");
+                if (el) {
+                    el.style.display = "block";
+                    el.style.width = "794px"; // Lebar A4 standar
+                    el.style.padding = "30px";
+                    el.style.background = "#ffffff";
+                    el.style.color = "#1e293b";
+                }
+            }
+        },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // BUAT KONTAINER SEMENTARA YANG TERJAMIN TAMPIL (DI BAWAH HALAMAN / OUT OF VIEWPORT)
+    // BUAT KONTAINER SEMENTARA (DISEMBUNYIKAN SECARA TOTAL DENGAN DISPLAY NONE)
     const tempContainer = document.createElement("div");
-    tempContainer.style.position = "absolute";
-    tempContainer.style.left = "0";
-    tempContainer.style.top = "100vh"; // Posisikan di bawah lipatan halaman agar tidak terlihat oleh user
-    tempContainer.style.width = "794px"; // Ukuran A4 standar lebar
-    tempContainer.style.background = "#ffffff";
-    tempContainer.style.padding = "30px";
-    tempContainer.style.fontFamily = "'Plus Jakarta Sans', Arial, sans-serif";
-    tempContainer.style.color = "#1e293b";
-    tempContainer.style.boxSizing = "border-box";
+    tempContainer.id = "temp-pdf-container";
+    tempContainer.style.display = "none"; // Pengguna tidak akan melihat kedipan/layout sama sekali
     
     // Salin seluruh HTML tanda terima dari printArea ke kontainer sementara
     tempContainer.innerHTML = printArea.innerHTML;
     
-    // Sisipkan kontainer sementara ke body agar di-render oleh browser
+    // Sisipkan kontainer sementara ke body
     document.body.appendChild(tempContainer);
-
-    // Beri waktu 300ms agar browser memproses tata letak/layout & render Base64
-    await new Promise(resolve => setTimeout(resolve, 300));
 
     try {
         const blob = await html2pdf().from(tempContainer).set(opt).output('blob');
