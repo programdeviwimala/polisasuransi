@@ -698,11 +698,6 @@ h1, h2, h3, h4, h5, h6 {
         width: 100% !important;
     }
     
-    /* Stack tanda tangan secara vertikal di layar HP agar tidak gepeng */
-    .print-signature-section {
-        grid-template-columns: 1fr !important;
-        gap: 16px !important;
-    }
     /* Mengurangi padding form & card agar muat maksimal di HP */
     .app-section > div[style*="padding: 32px"] {
         padding: 16px !important;
