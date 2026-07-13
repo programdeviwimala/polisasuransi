@@ -5,6 +5,7 @@
 let supabaseClient;
 let currentUser = null;
 let currentSelectedJobId = null;
+let selectedNasabahIds = []; // Untuk hapus massal
 
 // Inisialisasi Klien supabaseClient
 if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== "URL_SUPABASE_ANDA_DI_SINI") {
@@ -324,6 +325,7 @@ async function fetchDataAdmin() {
             .select(`
                 *,
                 nasabah (
+                    id,
                     nama_nasabah,
                     no_pk,
                     nama_marketing,
@@ -333,6 +335,13 @@ async function fetchDataAdmin() {
             .order('updated_at', { ascending: false });
 
         if (error) throw error;
+
+        // Urutkan berdasarkan angka di No PK (setelah slash kedua)
+        jaminanData.sort((a, b) => {
+            const pkA = extractPkNumber(a.nasabah?.no_pk || '');
+            const pkB = extractPkNumber(b.nasabah?.no_pk || '');
+            return pkA - pkB;
+        });
 
         // Reset Kontainer Kartu
         const colWaiting = document.getElementById("col-waiting");
@@ -351,7 +360,7 @@ async function fetchDataAdmin() {
         jaminanData.forEach(item => {
             const card = document.createElement("div");
             card.className = "policy-card";
-            card.onclick = () => openDetailModal(item);
+            const nasabahId = item.nasabah?.id;
 
             let tagClass = "tag-waiting";
             if (item.status === "Polis Datang, Menunggu Lapangan") {
@@ -363,6 +372,9 @@ async function fetchDataAdmin() {
             }
 
             card.innerHTML = `
+                <div class="card-delete-overlay">
+                    <input type="checkbox" class="card-checkbox" data-nasabah-id="${nasabahId}" onclick="toggleNasabahSelect(event, '${nasabahId}')">
+                </div>
                 <span class="card-tag ${tagClass}">${item.status}</span>
                 <div class="card-title">${item.nasabah ? item.nasabah.nama_nasabah : 'Tanpa Nama'}</div>
                 <div class="card-meta">
@@ -371,7 +383,14 @@ async function fetchDataAdmin() {
                     <span>🏢 Asuransi: ${item.asuransi_pilihan}</span>
                     ${item.petugas_lapangan ? `<span>👤 Kurir: ${item.petugas_lapangan}</span>` : ''}
                 </div>
+                <button class="btn-delete-card" onclick="konfirmasiHapusNasabah(event, '${nasabahId}', '${item.nasabah?.nama_nasabah || 'Nasabah'}', '${item.nasabah?.no_pk || ''}')" title="Hapus nasabah ini">🗑️</button>
             `;
+
+            // Klik kartu (bukan tombol hapus) untuk buka modal
+            card.addEventListener('click', (e) => {
+                if (e.target.classList.contains('btn-delete-card') || e.target.classList.contains('card-checkbox')) return;
+                openDetailModal(item);
+            });
 
             // Masukkan ke kolom yang sesuai
             if (item.status === "Menunggu Polis") {
@@ -400,6 +419,10 @@ async function fetchDataAdmin() {
         document.getElementById("badge-arrived").innerText = countArrived;
         document.getElementById("badge-delivery").innerText = countDelivery;
         document.getElementById("badge-done").innerText = countDone;
+
+        // Reset state pilihan hapus massal
+        selectedNasabahIds = [];
+        updateDeleteToolbar();
 
     } catch (err) {
         console.error("Gagal memuat data admin:", err);
@@ -525,6 +548,19 @@ document.getElementById("nasabah-form").addEventListener("submit", async (e) => 
         const nBunga = document.getElementById("nasabah-bunga").value;
         const nKet = document.getElementById("nasabah-keterangan").value;
 
+        // --- CEK DUPLIKAT NO PK ---
+        const { data: existing } = await supabaseClient
+            .from("nasabah")
+            .select("id")
+            .eq("no_pk", nPk)
+            .maybeSingle();
+
+        if (existing) {
+            alert(`⚠️ No PK "${nPk}" sudah terdaftar!\n\nGunakan fitur Pencarian di Dashboard untuk melihat data nasabah tersebut.`);
+            return;
+        }
+        // --- AKHIR CEK DUPLIKAT ---
+
         const { data: nasabahSaved, error: nasabahError } = await supabaseClient
             .from("nasabah")
             .insert({
@@ -572,7 +608,7 @@ document.getElementById("nasabah-form").addEventListener("submit", async (e) => 
 
         if (jaminanError) throw jaminanError;
 
-        alert("Data Nasabah & Jaminan berhasil disimpan!");
+        alert("✅ Data Nasabah & Jaminan berhasil disimpan!");
         resetFormInput();
         
         // Pindah kembali ke Dashboard
@@ -752,6 +788,8 @@ async function openDetailModal(item) {
         printPanel.style.display = "block";
         btnPrintPetugas.style.display = "block";
         btnPrintNasabah.style.display = "block";
+        const btnKirimWa = document.getElementById("btn-kirim-wa");
+        if (btnKirimWa) btnKirimWa.style.display = "block";
     }
 
     modalDetail.classList.add("active");
@@ -960,6 +998,7 @@ window.openDetailModal_withPrint = async function(item) {
 function setupPrintButtons() {
     const btnPrintPetugas = document.getElementById("btn-print-ttd-petugas");
     const btnPrintNasabah = document.getElementById("btn-print-ttd-nasabah");
+    const btnKirimWa = document.getElementById("btn-kirim-wa");
 
     if (btnPrintPetugas) {
         btnPrintPetugas.addEventListener("click", () => {
@@ -972,6 +1011,13 @@ function setupPrintButtons() {
         btnPrintNasabah.addEventListener("click", () => {
             if (!currentModalItem) return;
             printTandaTerima("nasabah", currentModalItem);
+        });
+    }
+
+    if (btnKirimWa) {
+        btnKirimWa.addEventListener("click", async () => {
+            if (!currentModalItem) return;
+            await kirimWhatsApp(currentModalItem);
         });
     }
 }
@@ -1152,6 +1198,145 @@ async function printTandaTerima(jenis, item) {
     // Jalankan dialog print browser
     window.print();
 }
+
+// ==========================================
+// FUNGSI KIRIM WHATSAPP CLICK-TO-CHAT
+// ==========================================
+async function kirimWhatsApp(item) {
+    const nasabah = item.nasabah || {};
+    const nomorWa = prompt("Masukkan nomor WhatsApp Nasabah (tanpa tanda + atau 0, awali dengan 62):\nContoh: 628123456789", "62");
+    if (!nomorWa || nomorWa.trim().length < 10) return;
+
+    // Ambil semua jaminan nasabah
+    let allJaminan = [];
+    try {
+        const { data } = await supabaseClient
+            .from("jaminan_polis")
+            .select("*")
+            .eq("nasabah_id", item.nasabah_id);
+        if (data) allJaminan = data;
+    } catch (err) { /* skip */ }
+
+    const tanggal = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
+    let daftarJaminan = allJaminan.map((j, idx) =>
+        `${idx + 1}. ${j.merk_kendaraan} ${j.tipe_kendaraan} (${j.tahun_kendaraan})\n   No. Polis: ${j.no_polis || 'Belum ada'}`
+    ).join('\n');
+
+    const pesan =
+`*TANDA TERIMA POLIS ASURANSI*
+━━━━━━━━━━━━━━━━━━━━━━━━
+Yth. Bpk/Ibu *${nasabah.nama_nasabah || '-'}*
+No PK: *${nasabah.no_pk || '-'}*
+
+*Jaminan Kendaraan:*
+${daftarJaminan}
+
+Tanggal Serah Terima: *${tanggal}*
+Diserahkan oleh: *${currentUser ? currentUser.username : 'Admin'}*
+━━━━━━━━━━━━━━━━━━━━━━━━
+_Harap disimpan sebagai bukti penerimaan polis._
+_BPR Cahaya Fajar Jatiwangi_`;
+
+    const url = `https://wa.me/${nomorWa.trim()}?text=${encodeURIComponent(pesan)}`;
+    window.open(url, '_blank');
+}
+
+// ==========================================
+// FITUR HAPUS DATA NASABAH (1 PK = semua jaminannya ikut terhapus)
+// ==========================================
+
+// Ekstrak angka dari No PK (angka setelah slash kedua)
+function extractPkNumber(noPk) {
+    if (!noPk) return 0;
+    const parts = noPk.split('/');
+    const lastPart = parts[parts.length - 1];
+    return parseInt(lastPart.replace(/[^0-9]/g, ''), 10) || 0;
+}
+
+// Toggle pilihan nasabah untuk hapus massal
+window.toggleNasabahSelect = function(event, nasabahId) {
+    event.stopPropagation();
+    if (!nasabahId || nasabahId === 'null' || nasabahId === 'undefined') return;
+    const idx = selectedNasabahIds.indexOf(nasabahId);
+    if (idx === -1) {
+        selectedNasabahIds.push(nasabahId);
+    } else {
+        selectedNasabahIds.splice(idx, 1);
+    }
+    updateDeleteToolbar();
+};
+
+function updateDeleteToolbar() {
+    const toolbar = document.getElementById('delete-toolbar');
+    const countBadge = document.getElementById('delete-count-badge');
+    if (!toolbar) return;
+    if (selectedNasabahIds.length > 0) {
+        toolbar.style.display = 'flex';
+        countBadge.innerText = `${selectedNasabahIds.length} Nasabah Dipilih`;
+    } else {
+        toolbar.style.display = 'none';
+    }
+}
+
+// Hapus 1 nasabah beserta jaminannya
+window.konfirmasiHapusNasabah = function(event, nasabahId, namaNasabah, noPk) {
+    event.stopPropagation();
+    if (!nasabahId || nasabahId === 'null') return;
+    if (!confirm(`🗑️ Hapus Nasabah?\n\nNama: ${namaNasabah}\nNo PK: ${noPk}\n\nSemua jaminan polis terkait No PK ini akan ikut TERHAPUS PERMANEN.\n\nLanjutkan?`)) return;
+    hapusNasabahById(nasabahId, namaNasabah);
+};
+
+async function hapusNasabahById(nasabahId, namaNasabah) {
+    try {
+        // 1. Hapus semua jaminan polis milik nasabah ini
+        const { error: errJaminan } = await supabaseClient
+            .from('jaminan_polis')
+            .delete()
+            .eq('nasabah_id', nasabahId);
+        if (errJaminan) throw errJaminan;
+
+        // 2. Hapus nasabah itu sendiri
+        const { error: errNasabah } = await supabaseClient
+            .from('nasabah')
+            .delete()
+            .eq('id', nasabahId);
+        if (errNasabah) throw errNasabah;
+
+        alert(`✅ Nasabah "${namaNasabah}" dan seluruh jaminannya berhasil dihapus.`);
+        fetchDataAdmin();
+    } catch (err) {
+        alert('Gagal menghapus data: ' + err.message);
+    }
+}
+
+// Hapus massal semua nasabah yang dipilih
+async function hapusMassalNasabah() {
+    if (selectedNasabahIds.length === 0) return;
+    const jumlah = selectedNasabahIds.length;
+    if (!confirm(`🗑️ Hapus ${jumlah} Nasabah Sekaligus?\n\nSemua jaminan polis dari ${jumlah} nasabah ini akan ikut TERHAPUS PERMANEN.\n\nTindakan ini tidak dapat dibatalkan. Lanjutkan?`)) return;
+
+    const toolbar = document.getElementById('delete-toolbar');
+    const btnHapusMassal = document.getElementById('btn-hapus-massal');
+    btnHapusMassal.disabled = true;
+    btnHapusMassal.innerText = '⏳ Menghapus...';
+
+    let berhasil = 0;
+    for (const id of selectedNasabahIds) {
+        try {
+            await supabaseClient.from('jaminan_polis').delete().eq('nasabah_id', id);
+            await supabaseClient.from('nasabah').delete().eq('id', id);
+            berhasil++;
+        } catch (err) {
+            console.error('Gagal hapus nasabah id:', id, err);
+        }
+    }
+
+    alert(`✅ ${berhasil} dari ${jumlah} nasabah berhasil dihapus.`);
+    selectedNasabahIds = [];
+    fetchDataAdmin();
+}
+
+window.hapusMassalNasabah = hapusMassalNasabah;
 
 // ==========================================
 // FITUR KELOLA PENGGUNA (USER MANAGEMENT)

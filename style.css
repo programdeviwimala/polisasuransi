@@ -849,4 +849,57 @@ h1, h2, h3, h4, h5, h6 {
     background-color: #f8fafc;
 }
 
+/* ==========================================
+   CARD DELETE & SELECTION STYLING
+   ========================================== */
+
+.policy-card {
+    position: relative;
+}
+
+.card-delete-overlay {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    z-index: 5;
+}
+
+.card-checkbox {
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    accent-color: var(--danger);
+}
+
+.btn-delete-card {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: none;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    padding: 2px 5px;
+    border-radius: 4px;
+    z-index: 5;
+    line-height: 1;
+}
+
+.policy-card:hover .btn-delete-card {
+    opacity: 1;
+}
+
+.btn-delete-card:hover {
+    background-color: #fff1f2;
+    transform: scale(1.2);
+}
+
+/* Pulsing ring jika card dipilih */
+.policy-card:has(.card-checkbox:checked) {
+    outline: 2px solid var(--danger);
+    outline-offset: 1px;
+    background: #fff1f2;
+}
 

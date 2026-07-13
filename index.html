@@ -92,6 +92,15 @@
             </div>
             <div id="search-results-info" style="display:none; font-size:13px; color:var(--text-muted); margin-bottom:12px; padding: 0 4px;"></div>
 
+            <!-- Toolbar Hapus Massal (muncul saat ada card dipilih) -->
+            <div id="delete-toolbar" style="display:none; align-items:center; gap:12px; background:#fff1f2; border:1px solid #fecdd3; border-radius:var(--radius-sm); padding:12px 16px; margin-bottom:12px; flex-wrap:wrap;">
+                <span style="font-size:13px; font-weight:600; color:var(--danger);">🗑️</span>
+                <span id="delete-count-badge" style="font-size:13px; font-weight:700; color:var(--danger);">0 Nasabah Dipilih</span>
+                <span style="font-size:12px; color:#64748b;">— centang kartu untuk memilih, lalu hapus</span>
+                <button class="btn btn-danger" id="btn-hapus-massal" onclick="hapusMassalNasabah()" style="margin-left:auto; padding:8px 16px; font-size:13px;">🗑️ Hapus Semua Terpilih</button>
+                <button class="btn btn-secondary" onclick="selectedNasabahIds=[]; document.querySelectorAll('.card-checkbox').forEach(c=>c.checked=false); updateDeleteToolbar();" style="padding:8px 14px; font-size:13px;">✕ Batalkan</button>
+            </div>
+
             <!-- Kanban Board (Real-time Status List) -->
             <section class="board-container">
                 
@@ -495,6 +504,7 @@
                         <div style="display:flex; gap:12px;">
                             <button class="btn btn-secondary" id="btn-print-ttd-petugas" style="flex:1;">Cetak Tanda Terima Petugas</button>
                             <button class="btn btn-primary" id="btn-print-ttd-nasabah" style="flex:1;">Cetak Tanda Terima Nasabah</button>
+                            <button id="btn-kirim-wa" class="btn" style="flex:1; background:#25D366; color:white;">💬 Kirim ke WhatsApp</button>
                         </div>
                     </div>
                 </div>
