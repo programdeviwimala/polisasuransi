@@ -195,6 +195,17 @@ function renderNavigation() {
         };
         navActions.appendChild(btnInput);
 
+        const btnLaporan = document.createElement("button");
+        btnLaporan.className = "btn btn-tab";
+        btnLaporan.innerText = "Laporan & Export";
+        btnLaporan.onclick = () => {
+            document.querySelectorAll(".btn-tab").forEach(b => b.classList.remove("active"));
+            btnLaporan.classList.add("active");
+            showSection("section-laporan");
+            fetchDataLaporan();
+        };
+        navActions.appendChild(btnLaporan);
+
         const btnUsers = document.createElement("button");
         btnUsers.className = "btn btn-tab";
         btnUsers.innerText = "Kelola Pengguna";
@@ -844,6 +855,7 @@ document.getElementById("btn-admin-submit-assign").addEventListener("click", asy
             .from("jaminan_polis")
             .update({
                 petugas_lapangan: namaPetugas,
+                admin_penyerah: currentUser ? currentUser.username : "Admin",
                 ttd_petugas: ttdData,
                 status: "Diterima Lapangan, Dalam Proses Pengantaran",
                 updated_at: new Date()
@@ -1167,7 +1179,7 @@ async function printTandaTerima(jenis, item) {
                     <div class="label">Admin Kantor</div>
                     <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Tanda Tangan Manual)</div>
                     <div style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Tanda Tangan</div>
-                    <div class="signer-name">${currentUser ? currentUser.username : "Admin"}</div>
+                    <div class="signer-name">${item.admin_penyerah || (currentUser ? currentUser.username : "Admin")}</div>
                 </div>
                 <div class="print-signature-box">
                     <div class="label">Petugas Lapangan</div>
@@ -1903,6 +1915,144 @@ function parseExcelSheet(workbook) {
     }
 
     return items;
+}
+
+// ==========================================
+// FITUR LAPORAN & EXPORT EXCEL
+// ==========================================
+
+let laporanDataRaw = [];
+
+async function fetchDataLaporan() {
+    const tbody = document.getElementById("tbody-laporan");
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #94a3b8; padding: 30px;">⏳ Mengambil data...</td></tr>';
+
+    try {
+        const { data: jaminanData, error } = await supabaseClient
+            .from("jaminan_polis")
+            .select(`
+                *,
+                nasabah (
+                    id, nama_nasabah, no_pk, nama_marketing
+                )
+            `)
+            .order("updated_at", { ascending: false });
+
+        if (error) throw error;
+        laporanDataRaw = jaminanData || [];
+        renderLaporanTable();
+    } catch (err) {
+        console.error("Gagal ambil laporan:", err);
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: var(--danger); padding: 30px;">Gagal mengambil data laporan.</td></tr>';
+    }
+}
+
+function renderLaporanTable() {
+    const tbody = document.getElementById("tbody-laporan");
+    const filterStatus = document.getElementById("laporan-filter-status").value;
+    if (!tbody) return;
+
+    let filteredData = laporanDataRaw;
+    if (filterStatus !== "Semua") {
+        filteredData = laporanDataRaw.filter(item => item.status === filterStatus);
+    }
+
+    if (filteredData.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; color: #94a3b8; padding: 30px;">Tidak ada data yang sesuai dengan filter.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = "";
+    filteredData.forEach((item, index) => {
+        const tr = document.createElement("tr");
+        const nasabah = item.nasabah || {};
+        
+        let statusBadge = '';
+        if (item.status === 'Menunggu Polis') {
+            statusBadge = '<span class="status-badge" style="background:#fef08a; color:#854d0e;">⏳ Menunggu Polis</span>';
+        } else if (item.status === 'Polis Datang, Menunggu Lapangan') {
+            statusBadge = '<span class="status-badge" style="background:#bfdbfe; color:#1e40af;">🏢 Polis Datang</span>';
+        } else if (item.status === 'Diterima Lapangan, Dalam Proses Pengantaran') {
+            statusBadge = '<span class="status-badge" style="background:#fbcfe8; color:#be185d;">🛵 Proses Antar</span>';
+        } else {
+            statusBadge = '<span class="status-badge" style="background:#bbf7d0; color:#166534;">✅ Selesai</span>';
+        }
+
+        tr.innerHTML = `
+            <td style="text-align: center;">${index + 1}</td>
+            <td><strong>${nasabah.no_pk || '-'}</strong></td>
+            <td>${nasabah.nama_nasabah || '-'}</td>
+            <td>${nasabah.nama_marketing || '-'}</td>
+            <td>${item.merk_kendaraan || '-'} ${item.tipe_kendaraan || '-'}</td>
+            <td style="text-align: center;">${item.tahun_kendaraan || '-'}</td>
+            <td>${item.asuransi_pilihan || '-'}</td>
+            <td>${item.no_polis || '-'}</td>
+            <td>${statusBadge}</td>
+            <td>${item.petugas_lapangan || '-'}</td>
+            <td>${item.admin_penyerah || '-'}</td>
+            <td style="font-size: 12px; color: #64748b;">${formatTanggal(item.updated_at)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+const filterStatusEl = document.getElementById("laporan-filter-status");
+if (filterStatusEl) {
+    filterStatusEl.addEventListener("change", renderLaporanTable);
+}
+
+const btnExportExcel = document.getElementById("btn-export-excel");
+if (btnExportExcel) {
+    btnExportExcel.addEventListener("click", () => {
+        const filterStatus = document.getElementById("laporan-filter-status").value;
+        let filteredData = laporanDataRaw;
+        if (filterStatus !== "Semua") {
+            filteredData = laporanDataRaw.filter(item => item.status === filterStatus);
+        }
+
+        if (filteredData.length === 0) {
+            alert("Tidak ada data untuk diexport!");
+            return;
+        }
+
+        const excelData = filteredData.map((item, index) => {
+            const nasabah = item.nasabah || {};
+            return {
+                "No": index + 1,
+                "No PK": nasabah.no_pk || "-",
+                "Nama Nasabah": nasabah.nama_nasabah || "-",
+                "Nama Marketing": nasabah.nama_marketing || "-",
+                "Merk Kendaraan": item.merk_kendaraan || "-",
+                "Tipe Kendaraan": item.tipe_kendaraan || "-",
+                "Tahun": item.tahun_kendaraan || "-",
+                "Harga Taksasi": item.harga_taksasi || 0,
+                "Asuransi": item.asuransi_pilihan || "-",
+                "No Polis": item.no_polis || "-",
+                "Status": item.status || "-",
+                "Petugas Lapangan": item.petugas_lapangan || "-",
+                "Admin Penyerah": item.admin_penyerah || "-",
+                "Terakhir Update": item.updated_at ? new Date(item.updated_at).toLocaleString('id-ID') : "-"
+            };
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(excelData);
+        
+        // Atur lebar kolom sedikit
+        const wscols = [
+            {wch: 5}, {wch: 20}, {wch: 30}, {wch: 20}, {wch: 15},
+            {wch: 15}, {wch: 8}, {wch: 15}, {wch: 20}, {wch: 20},
+            {wch: 25}, {wch: 20}, {wch: 20}, {wch: 20}
+        ];
+        worksheet['!cols'] = wscols;
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Polis");
+        
+        const fileName = \`Laporan_Polis_\${filterStatus === 'Semua' ? 'Keseluruhan' : filterStatus}_\${new Date().getTime()}.xlsx\`;
+        XLSX.writeFile(workbook, fileName);
+    });
 }
 
 

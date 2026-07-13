@@ -319,6 +319,59 @@
         </main>
 
         <!-- ==========================================
+             HALAMAN LAPORAN
+             ========================================== -->
+        <main id="section-laporan" class="app-section">
+            <div class="card" style="margin: 0 auto; max-width: 1200px;">
+                <h2 style="margin-bottom: 20px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                    📊 Laporan Rekapitulasi PK & Polis
+                </h2>
+                
+                <div style="display: flex; gap: 15px; margin-bottom: 20px; align-items: flex-end; background: #f8fafc; padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                    <div style="flex: 1;">
+                        <label for="laporan-filter-status" style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; color: #475569;">Filter Status Polis</label>
+                        <select id="laporan-filter-status" class="form-control">
+                            <option value="Semua">Tampilkan Semua Status</option>
+                            <option value="Menunggu Polis">Menunggu Polis</option>
+                            <option value="Polis Datang, Menunggu Lapangan">Polis Datang, Belum Diserahkan Petugas</option>
+                            <option value="Diterima Lapangan, Dalam Proses Pengantaran">Sedang Diantar (Di Lapangan)</option>
+                            <option value="Selesai, Polis Sudah Diantar Nasabah">Selesai (Sudah Diterima Nasabah)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <button class="btn btn-success" id="btn-export-excel" style="display: flex; align-items: center; gap: 6px; padding: 12px 20px;">
+                            📥 Download Excel
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table" id="tabel-laporan">
+                        <thead>
+                            <tr>
+                                <th>No</th>
+                                <th>No PK</th>
+                                <th>Nama Nasabah</th>
+                                <th>Marketing</th>
+                                <th>Merk & Tipe</th>
+                                <th>Tahun</th>
+                                <th>Asuransi</th>
+                                <th>No Polis</th>
+                                <th>Status</th>
+                                <th>Petugas</th>
+                                <th>Admin Penyerah</th>
+                                <th>Update Terakhir</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbody-laporan">
+                            <tr><td colspan="12" style="text-align: center; color: #94a3b8; padding: 30px;">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==========================================
              HALAMAN KELOLA PENGGUNA (USER MANAGEMENT)
              ========================================== -->
         <main id="section-users" class="app-section">

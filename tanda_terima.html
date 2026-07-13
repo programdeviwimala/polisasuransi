@@ -221,6 +221,8 @@
                 document.getElementById("rec-nasabah-signer").innerText = nasabah.nama_nasabah || "_______________";
 
                 // Tanda tangan
+                document.getElementById("rec-admin").innerText = item.admin_penyerah || "Admin";
+
                 if (item.ttd_petugas) {
                     document.getElementById("rec-ttd-petugas").src = item.ttd_petugas;
                     document.getElementById("rec-ttd-petugas").style.display = "block";
