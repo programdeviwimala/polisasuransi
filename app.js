@@ -1457,7 +1457,7 @@ async function kirimWhatsApp(item) {
     ).join('\n');
 
     // URL halaman publik di GitHub Pages
-    const publicReceiptUrl = `https://programdewinimals.github.io/polisasuransi/tanda_terima.html?id=${item.id}`;
+    const publicReceiptUrl = `https://programdeviwimala.github.io/polisasuransi/tanda_terima.html?id=${item.id}`;
 
     const pesan =
 `*TANDA TERIMA POLIS ASURANSI*
