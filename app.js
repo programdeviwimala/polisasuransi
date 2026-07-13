@@ -1327,45 +1327,97 @@ async function sharePdfTandaTerima(item) {
         </div>
     `;
 
-    // Konfigurasi html2pdf dengan onclone handler untuk menampilkan elemen tersembunyi saat proses cetak
+    // TAMPILKAN LOADING OVERLAY DI LAYAR UTAMA (USER TIDAK AKAN MELIHAT PROSES RENDERING DI BELAKANGNYA)
+    const style = document.createElement('style');
+    style.id = "pdf-spin-style";
+    style.innerHTML = `
+        @keyframes pdf-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    `;
+    document.head.appendChild(style);
+
+    const loadingOverlay = document.createElement("div");
+    loadingOverlay.style.position = "fixed";
+    loadingOverlay.style.top = "0";
+    loadingOverlay.style.left = "0";
+    loadingOverlay.style.width = "100vw";
+    loadingOverlay.style.height = "100vh";
+    loadingOverlay.style.background = "rgba(15, 23, 42, 0.95)"; // Slate gelap solid
+    loadingOverlay.style.zIndex = "99999";
+    loadingOverlay.style.display = "flex";
+    loadingOverlay.style.flexDirection = "column";
+    loadingOverlay.style.alignItems = "center";
+    loadingOverlay.style.justifyContent = "center";
+    loadingOverlay.style.color = "#ffffff";
+    loadingOverlay.style.fontFamily = "'Outfit', sans-serif";
+    loadingOverlay.innerHTML = `
+        <div style="font-size: 40px; margin-bottom: 20px; animation: pdf-spin 1.5s linear infinite; display: inline-block;">⏳</div>
+        <div style="font-size: 18px; font-weight: 600; letter-spacing: 0.5px;">Menyiapkan PDF Tanda Terima...</div>
+        <div style="font-size: 13px; color: #94a3b8; margin-top: 8px;">Mohon tunggu sebentar, file sedang diproses.</div>
+    `;
+    document.body.appendChild(loadingOverlay);
+
+    // BUAT KONTAINER SEMENTARA DI BAWAH LOADING OVERLAY (DAPAT DI-RENDER BROWSER TAPI TERTUTUP OVERLAY)
+    const tempContainer = document.createElement("div");
+    tempContainer.style.position = "absolute";
+    tempContainer.style.left = "0";
+    tempContainer.style.top = "0";
+    tempContainer.style.width = "794px"; // Lebar kertas A4 standar
+    tempContainer.style.zIndex = "99998"; // Di bawah loading overlay
+    tempContainer.style.background = "#ffffff";
+    tempContainer.style.padding = "40px";
+    tempContainer.style.boxSizing = "border-box";
+    tempContainer.style.fontFamily = "'Plus Jakarta Sans', Arial, sans-serif";
+    tempContainer.style.color = "#1e293b";
+    
+    // Salin seluruh HTML tanda terima dari printArea ke kontainer sementara
+    tempContainer.innerHTML = printArea.innerHTML;
+    document.body.appendChild(tempContainer);
+
+    // Beri waktu 300ms agar browser merender & menyusun layout elemen di background
+    await new Promise(resolve => setTimeout(resolve, 350));
+
+    // Konfigurasi html2pdf
     const opt = {
         margin:       10,
         filename:     `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { 
-            scale: 2, 
-            useCORS: true, 
-            logging: false,
-            onclone: function(clonedDoc) {
-                const el = clonedDoc.getElementById("temp-pdf-container");
-                if (el) {
-                    el.style.display = "block";
-                    el.style.width = "794px"; // Lebar A4 standar
-                    el.style.padding = "30px";
-                    el.style.background = "#ffffff";
-                    el.style.color = "#1e293b";
-                }
-            }
-        },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-
-    // BUAT KONTAINER SEMENTARA (DISEMBUNYIKAN SECARA TOTAL DENGAN DISPLAY NONE)
-    const tempContainer = document.createElement("div");
-    tempContainer.id = "temp-pdf-container";
-    tempContainer.style.display = "none"; // Pengguna tidak akan melihat kedipan/layout sama sekali
-    
-    // Salin seluruh HTML tanda terima dari printArea ke kontainer sementara
-    tempContainer.innerHTML = printArea.innerHTML;
-    
-    // Sisipkan kontainer sementara ke body
-    document.body.appendChild(tempContainer);
 
     try {
         const blob = await html2pdf().from(tempContainer).set(opt).output('blob');
         
-        // Hapus kontainer sementara dari DOM setelah selesai
-        document.body.removeChild(tempContainer);
+        // Bersihkan DOM (Hapus overlay dan kontainer)
+        if (document.body.contains(tempContainer)) document.body.removeChild(tempContainer);
+        if (document.body.contains(loadingOverlay)) document.body.removeChild(loadingOverlay);
+        if (document.head.contains(style)) document.head.removeChild(style);
+
+        const file = new File([blob], `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`, { type: "application/pdf" });
+
+        // Cek dukungan Web Share API untuk sharing file
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: `Tanda Terima - ${nasabah.nama_nasabah || 'Nasabah'}`,
+                text: `Berikut file PDF tanda terima polis asuransi Anda.`
+            });
+        } else {
+            // Fallback: Unduh otomatis di desktop
+            html2pdf().from(printArea).set(opt).save();
+            alert("Browser tidak mendukung share langsung. File PDF tanda terima telah diunduh otomatis. Silakan kirim file tersebut manual ke WhatsApp.");
+        }
+    } catch (err) {
+        console.error("Gagal ekspor PDF:", err);
+        // Hapus elemen jika terjadi error
+        if (document.body.contains(tempContainer)) document.body.removeChild(tempContainer);
+        if (document.body.contains(loadingOverlay)) document.body.removeChild(loadingOverlay);
+        if (document.head.contains(style)) document.head.removeChild(style);
+        alert("Terjadi kesalahan saat menyiapkan PDF.");
+    } finally {
 
         const file = new File([blob], `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`, { type: "application/pdf" });
 
