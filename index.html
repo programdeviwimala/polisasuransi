@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Monitoring & Tanda Terima Polis Asuransi</title>
+    
+    <!-- Google Fonts & Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (XLSX) CDN untuk membaca file Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+
+    <div class="app-container">
+        
+        <!-- ==========================================
+             NAVIGATION BAR (Dinamis via JS)
+             ========================================== -->
+        <header id="app-header" class="nav-bar" style="display: none;">
+            <div class="brand">
+                <div class="brand-logo">P</div>
+                <div class="brand-name">PolisTrack</div>
+            </div>
+            <div class="nav-links" id="nav-actions">
+                <!-- Diisi otomatis berdasarkan role admin/lapangan -->
+            </div>
+        </header>
+
+        <!-- ==========================================
+             HALAMAN LOGIN
+             ========================================== -->
+        <main id="section-login" class="app-section active">
+            <div class="login-wrapper">
+                <div class="login-card">
+                    <div class="login-header">
+                        <div class="logo">P</div>
+                        <h2>Masuk ke Sistem</h2>
+                        <p>Silakan gunakan akun operasional Anda</p>
+                    </div>
+                    <form id="login-form">
+                        <div class="form-group">
+                            <label for="login-username">Username</label>
+                            <input type="text" id="login-username" class="form-control" placeholder="Masukkan username" required autocomplete="username">
+                        </div>
+                        <div class="form-group">
+                            <label for="login-password">Password</label>
+                            <input type="password" id="login-password" class="form-control" placeholder="Masukkan password" required autocomplete="current-password">
+                        </div>
+                        <div id="login-error" style="color: var(--danger); font-size: 13px; margin-bottom: 15px; display: none;">
+                            Username atau Password salah!
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="width: 100%; padding: 14px;">Masuk</button>
+                    </form>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==========================================
+             HALAMAN UTAMA ADMIN
+             ========================================== -->
+        <main id="section-admin" class="app-section">
+            
+            <!-- Dashboard Metric Counters -->
+            <section class="dashboard-metrics">
+                <div class="metric-card waiting-status">
+                    <div class="metric-label">Menunggu Polis</div>
+                    <div class="metric-num" id="count-waiting">0</div>
+                </div>
+                <div class="metric-card active-status">
+                    <div class="metric-label">Polis Datang</div>
+                    <div class="metric-num" id="count-arrived">0</div>
+                </div>
+                <div class="metric-card delivery-status">
+                    <div class="metric-label">Dalam Pengantaran</div>
+                    <div class="metric-num" id="count-delivery">0</div>
+                </div>
+                <div class="metric-card done-status">
+                    <div class="metric-label">Selesai Diantar</div>
+                    <div class="metric-num" id="count-done">0</div>
+                </div>
+            </section>
+
+            <!-- Search Bar -->
+            <div class="search-bar-wrapper">
+                <div class="search-icon">🔍</div>
+                <input type="text" id="search-input" class="search-input" placeholder="Cari berdasarkan Nama Nasabah, No PK, atau No Polis...">
+                <button class="btn btn-secondary" id="btn-clear-search" style="display:none; padding: 10px 14px;">✕</button>
+            </div>
+            <div id="search-results-info" style="display:none; font-size:13px; color:var(--text-muted); margin-bottom:12px; padding: 0 4px;"></div>
+
+            <!-- Kanban Board (Real-time Status List) -->
+            <section class="board-container">
+                
+                <!-- Kolom 1: Menunggu Polis -->
+                <div class="board-column">
+                    <div class="column-header">
+                        <h3 class="column-title"><span style="color: var(--accent)">●</span> Menunggu Polis</h3>
+                        <span class="column-count" id="badge-waiting">0</span>
+                    </div>
+                    <div class="column-cards-wrapper" id="col-waiting">
+                        <!-- Diisi data via JS -->
+                    </div>
+                </div>
+
+                <!-- Kolom 2: Polis Datang, Menunggu Lapangan -->
+                <div class="board-column">
+                    <div class="column-header">
+                        <h3 class="column-title"><span style="color: var(--primary)">●</span> Polis Datang</h3>
+                        <span class="column-count" id="badge-arrived">0</span>
+                    </div>
+                    <div class="column-cards-wrapper" id="col-arrived">
+                        <!-- Diisi data via JS -->
+                    </div>
+                </div>
+
+                <!-- Kolom 3: Diterima Lapangan, Dalam Proses Pengantaran -->
+                <div class="board-column">
+                    <div class="column-header">
+                        <h3 class="column-title"><span style="color: var(--info)">●</span> Dalam Pengantaran</h3>
+                        <span class="column-count" id="badge-delivery">0</span>
+                    </div>
+                    <div class="column-cards-wrapper" id="col-delivery">
+                        <!-- Diisi data via JS -->
+                    </div>
+                </div>
+
+                <!-- Kolom 4: Selesai, Polis Sudah Diantar Nasabah -->
+                <div class="board-column">
+                    <div class="column-header">
+                        <h3 class="column-title"><span style="color: var(--success)">●</span> Selesai Diantar</h3>
+                        <span class="column-count" id="badge-done">0</span>
+                    </div>
+                    <div class="column-cards-wrapper" id="col-done">
+                        <!-- Diisi data via JS -->
+                    </div>
+                </div>
+
+            </section>
+        </main>
+
+        <!-- ==========================================
+             FORM INPUT NASABAH & JAMINAN (ADMIN)
+             ========================================== -->
+        <main id="section-input-nasabah" class="app-section">
+            <div style="background: white; padding: 32px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); border: 1px solid var(--border-color); max-width: 800px; margin: 0 auto;">
+                <h2 style="margin-bottom: 20px; border-bottom: 2px solid var(--bg-main); padding-bottom: 12px;">Input Nasabah & Jaminan Baru</h2>
+                
+                <!-- Selector Metode Input -->
+                <div style="display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 2px solid var(--border-color); padding-bottom: 12px;">
+                    <button type="button" class="btn btn-tab active" id="btn-input-manual" style="padding: 8px 16px;">✍️ Input Manual</button>
+                    <button type="button" class="btn btn-tab" id="btn-input-excel" style="padding: 8px 16px;">📊 Upload Excel</button>
+                </div>
+
+                <!-- Container Input Manual -->
+                <div id="container-input-manual">
+                    <form id="nasabah-form">
+                    <!-- Data Diri Nasabah -->
+                    <h3 style="font-size: 16px; margin-bottom: 16px; color: var(--primary)">I. Data Nasabah</h3>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="nasabah-nama">Nama Nasabah</label>
+                            <input type="text" id="nasabah-nama" class="form-control" required placeholder="Nama lengkap nasabah">
+                        </div>
+                        <div class="form-group">
+                            <label for="nasabah-marketing">Nama Marketing</label>
+                            <input type="text" id="nasabah-marketing" class="form-control" required placeholder="Nama petugas marketing">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="nasabah-pk">Nomor PK (Perjanjian Kredit)</label>
+                            <input type="text" id="nasabah-pk" class="form-control" required placeholder="Contoh: PK-10293">
+                        </div>
+                        <div class="form-group">
+                            <label for="nasabah-plafond">Plafond (Rp)</label>
+                            <input type="number" id="nasabah-plafond" class="form-control" required placeholder="Jumlah plafond kredit">
+                        </div>
+                    </div>
+                    <div class="grid-3">
+                        <div class="form-group">
+                            <label for="nasabah-jangka">Jangka Waktu (Bulan)</label>
+                            <input type="number" id="nasabah-jangka" class="form-control" required placeholder="Bulan">
+                        </div>
+                        <div class="form-group">
+                            <label for="nasabah-awal">Periode Awal</label>
+                            <input type="date" id="nasabah-awal" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="nasabah-akhir">Periode Akhir</label>
+                            <input type="date" id="nasabah-akhir" class="form-control" required>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="form-group">
+                            <label for="nasabah-bunga">Spread Rate (Bunga %)</label>
+                            <input type="number" step="0.01" id="nasabah-bunga" class="form-control" required placeholder="Contoh: 8.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="nasabah-keterangan">Keterangan</label>
+                            <select id="nasabah-keterangan" class="form-control" required>
+                                <option value="Baru">Baru</option>
+                                <option value="RO LUNAS">RO LUNAS</option>
+                                <option value="RO KM">RO KM</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Data Jaminan Kendaraan (Bisa Multi-item) -->
+                    <h3 style="font-size: 16px; margin-top: 24px; margin-bottom: 16px; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                        II. Data Jaminan Kendaraan
+                        <button type="button" class="btn btn-secondary" id="btn-add-jaminan" style="padding: 6px 12px; font-size: 12px;">+ Tambah Kendaraan</button>
+                    </h3>
+                    
+                    <div id="jaminan-items-container">
+                        <!-- Item Jaminan pertama (Default) -->
+                        <div class="jaminan-item-box" data-index="0">
+                            <div class="grid-3">
+                                <div class="form-group">
+                                    <label>Merk Kendaraan</label>
+                                    <input type="text" class="form-control jaminan-merk" required placeholder="Contoh: Toyota">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tipe Kendaraan</label>
+                                    <input type="text" class="form-control jaminan-tipe" required placeholder="Contoh: Avanza G Veloz">
+                                </div>
+                                <div class="form-group">
+                                    <label>Tahun Kendaraan</label>
+                                    <input type="number" class="form-control jaminan-tahun" required placeholder="Tahun">
+                                </div>
+                            </div>
+                            <div class="grid-2">
+                                <div class="form-group">
+                                    <label>Harga Taksasi (Rp)</label>
+                                    <input type="number" class="form-control jaminan-taksasi" required placeholder="Taksiran harga">
+                                </div>
+                                <div class="form-group">
+                                    <label>Asuransi Pilihan</label>
+                                    <select class="form-control jaminan-asuransi" required>
+                                        <option value="MAG">MAG</option>
+                                        <option value="CHUBB">CHUBB</option>
+                                        <option value="Ramayana">Ramayana</option>
+                                        <option value="Allianz">Allianz</option>
+                                        <option value="Lainnya">Lainnya</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 32px; display: flex; gap: 12px;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1; padding: 14px;">Simpan Nasabah & Jaminan</button>
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-input" style="padding: 14px;">Batal</button>
+                    </div>
+                </form>
+                </div>
+
+                <!-- Container Upload Excel -->
+                <div id="container-input-excel" style="display: none;">
+                    <div style="background: #f8fafc; padding: 24px; border-radius: var(--radius-md); border: 2px dashed var(--primary); text-align: center; margin-bottom: 20px; transition: all 0.2s ease;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📥</div>
+                        <h4 style="margin-bottom: 8px;">Pilih File Excel Pencairan Kredit</h4>
+                        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">
+                            Format file harus sesuai dengan tabel Pencairan Kredit (.xlsx atau .xls)
+                        </p>
+                        <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="display: none;">
+                        <button type="button" class="btn btn-primary" onclick="document.getElementById('excel-file-input').click()">Pilih File Excel</button>
+                        <div id="excel-file-info" style="margin-top: 15px; font-weight: 600; color: var(--secondary); display: none;"></div>
+                        <!-- Debug Info Deteksi Kolom -->
+                        <div id="excel-debug-info" style="display:none; text-align:left; font-size:12px; margin-top:15px; padding:12px; background:#fffbeb; border:1px solid #fef3c7; border-radius:6px; color:#b45309; font-family:monospace; line-height: 1.5;"></div>
+                    </div>
+
+                    <!-- Preview Data Sebelum Upload -->
+                    <div id="excel-preview-section" style="display: none; margin-top: 30px;">
+                        <h3 style="font-size: 15px; margin-bottom: 12px; color: var(--primary); display: flex; justify-content: space-between; align-items: center;">
+                            Preview Data Excel
+                            <span id="excel-row-count" class="column-count">0 Baris</span>
+                        </h3>
+                        <div style="max-height: 400px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: var(--radius-sm); margin-bottom: 20px; box-shadow: var(--shadow-sm);">
+                            <table class="data-table" style="width: 100%; border-collapse: collapse; font-size: 11px; min-width: 1000px;">
+                                <thead>
+                                    <tr style="background: #f1f5f9; position: sticky; top: 0; z-index: 10;">
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">No PK</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">Nasabah</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">Marketing</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: right;">Plafond</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center;">JW</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center;">Periode Awal</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center;">Periode Akhir</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center;">Bunga</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">Merk</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">Tipe</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: center;">Tahun</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); text-align: right;">Taksasi</th>
+                                        <th style="padding: 8px; border-bottom: 1px solid var(--border-color); text-align: center;">Keterangan</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="excel-preview-tbody">
+                                    <!-- Diisi via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-success" id="btn-upload-excel" style="width: 100%; padding: 14px; font-weight: 700;">💾 Simpan Semua ke Database</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==========================================
+             HALAMAN KELOLA PENGGUNA (USER MANAGEMENT)
+             ========================================== -->
+        <main id="section-users" class="app-section">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <h2 style="margin-bottom: 20px; color: var(--primary); display: flex; align-items: center; gap: 8px;">
+                    👤 Kelola Pengguna Sistem
+                </h2>
+                
+                <!-- Form Tambah Pengguna Baru -->
+                <div style="background: #f8fafc; padding: 20px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 30px;">
+                    <h3 style="font-size: 15px; margin-bottom: 15px; color: var(--text-main);">Tambah Pengguna Baru</h3>
+                    <form id="user-form">
+                        <div class="grid-3">
+                            <div class="form-group">
+                                <label for="user-username">Username</label>
+                                <input type="text" id="user-username" class="form-control" required placeholder="Contoh: budi">
+                            </div>
+                            <div class="form-group">
+                                <label for="user-password">Password</label>
+                                <input type="password" id="user-password" class="form-control" required placeholder="Password login">
+                            </div>
+                            <div class="form-group">
+                                <label for="user-role">Hak Akses (Role)</label>
+                                <select id="user-role" class="form-control" required>
+                                    <option value="lapangan">Petugas Lapangan</option>
+                                    <option value="admin">Administrator (Admin)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary" style="margin-top: 15px;">Simpan Pengguna</button>
+                    </form>
+                </div>
+
+                <!-- Daftar Pengguna -->
+                <h3 style="font-size: 15px; margin-bottom: 15px; color: var(--text-main);">Daftar Pengguna Saat Ini</h3>
+                <div style="overflow-x: auto;">
+                    <table class="data-table" style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background: #f1f5f9; text-align: left;">
+                                <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Username</th>
+                                <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Role</th>
+                                <th style="padding: 12px; border-bottom: 2px solid var(--border-color);">Password</th>
+                                <th style="padding: 12px; border-bottom: 2px solid var(--border-color); text-align: center;">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-list-tbody">
+                            <!-- Diisi via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <!-- ==========================================
+             HALAMAN UTAMA PETUGAS LAPANGAN
+             ========================================== -->
+        <main id="section-lapangan" class="app-section">
+            <h2 style="margin-bottom: 20px;">Daftar Pengantaran Polis Anda</h2>
+            <div id="lapangan-list" class="grid-2">
+                <!-- Kartu tugas diisi otomatis via JS -->
+            </div>
+            <div id="lapangan-empty-state" style="text-align: center; padding: 48px; background: white; border-radius: var(--radius-md); border: 1px solid var(--border-color); display: none;">
+                <p style="color: var(--text-muted);">Tidak ada tugas pengantaran polis untuk Anda saat ini.</p>
+            </div>
+        </main>
+
+        <!-- ==========================================
+             MODAL DETAIL & UPDATE POLIS
+             ========================================== -->
+        <div id="modal-detail" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 id="modal-title">Detail Pengantaran Polis</h3>
+                    <button class="close-btn" id="btn-close-modal">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <!-- Info Nasabah -->
+                    <div class="detail-section">
+                        <h4>Data Nasabah</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item"><label>Nama Nasabah</label><value id="det-nasabah-nama">-</value></div>
+                            <div class="detail-item"><label>Nomor PK</label><value id="det-nasabah-pk">-</value></div>
+                            <div class="detail-item"><label>Nama Marketing</label><value id="det-nasabah-marketing">-</value></div>
+                            <div class="detail-item"><label>Keterangan RO</label><value id="det-nasabah-ket">-</value></div>
+                        </div>
+                    </div>
+
+                    <!-- Info Kendaraan -->
+                    <div class="detail-section">
+                        <h4>Data Kendaraan & Asuransi</h4>
+                        <div class="detail-grid">
+                            <div class="detail-item"><label>Kendaraan</label><value id="det-jaminan-mobil">-</value></div>
+                            <div class="detail-item"><label>Asuransi</label><value id="det-jaminan-asuransi">-</value></div>
+                            <div class="detail-item"><label>Status Saat Ini</label><value id="det-jaminan-status">-</value></div>
+                            <div class="detail-item"><label>No Polis</label><value id="det-jaminan-polis-no">-</value></div>
+                        </div>
+                    </div>
+
+                    <!-- Panel Aksi Dinamis (Tergantung Status & Role) -->
+                    <div class="detail-section" id="action-panel" style="background: #f8fafc; padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color);">
+                        <h4 style="color: var(--primary)">Perbarui Status Polis</h4>
+                        
+                        <!-- AKSI 1: Admin Input No Polis (Menunggu Polis -> Polis Datang) -->
+                        <div id="action-admin-arrived" style="display: none;">
+                            <div class="form-group">
+                                <label for="input-no-polis">Masukkan Nomor Polis Asuransi</label>
+                                <input type="text" id="input-no-polis" class="form-control" placeholder="Contoh: POL/MAG/120938">
+                            </div>
+                            <button class="btn btn-primary" id="btn-admin-submit-arrived" style="width: 100%;">Konfirmasi Polis Diterima Kantor</button>
+                        </div>
+
+                        <!-- AKSI 2: Admin Serahkan ke Lapangan (Polis Datang -> Dalam Pengantaran) -->
+                        <div id="action-admin-assign" style="display: none;">
+                            <div class="form-group">
+                                <label for="select-petugas">Pilih Petugas Lapangan</label>
+                                <select id="select-petugas" class="form-control">
+                                    <!-- Diisi via JS akun lapangan -->
+                                </select>
+                            </div>
+                            
+                            <!-- Tanda Tangan Serah Terima Petugas Lapangan -->
+                            <div class="form-group">
+                                <label>Tanda Tangan Tanda Terima Petugas Lapangan</label>
+                                <div class="canvas-container">
+                                    <canvas id="canvas-ttd-petugas"></canvas>
+                                    <button type="button" class="btn btn-secondary canvas-clear-btn" id="btn-clear-ttd-petugas">Hapus</button>
+                                </div>
+                            </div>
+                            
+                            <div style="display:flex; gap:12px; margin-top:4px;">
+                                <button class="btn btn-primary" id="btn-admin-submit-assign" style="flex:1;">Serahkan ke Petugas Lapangan</button>
+                            </div>
+                        </div>
+
+                        <!-- AKSI 3: Petugas Lapangan Selesaikan Pengantaran (Dalam Pengantaran -> Selesai) -->
+                        <div id="action-lapangan-done" style="display: none;">
+                            <!-- Foto Bukti Penyerahan -->
+                            <div class="form-group">
+                                <label>Ambil Foto Bukti Tanda Terima (Nasabah memegang polis/surat)</label>
+                                <div class="camera-container" id="camera-click-box">
+                                    <div class="camera-icon">📷</div>
+                                    <span>Klik untuk Buka Kamera / Pilih Foto</span>
+                                    <input type="file" id="input-camera-foto" accept="image/*">
+                                    <img id="preview-foto-bukti" class="camera-preview" src="" alt="Preview Bukti">
+                                </div>
+                            </div>
+
+                            <!-- Tanda Tangan Nasabah -->
+                            <div class="form-group">
+                                <label>Tanda Tangan Penerimaan Nasabah</label>
+                                <div class="canvas-container">
+                                    <canvas id="canvas-ttd-nasabah"></canvas>
+                                    <button type="button" class="btn btn-secondary canvas-clear-btn" id="btn-clear-ttd-nasabah">Hapus</button>
+                                </div>
+                            </div>
+
+                            <button class="btn btn-success" id="btn-lapangan-submit-done" style="width: 100%;">Selesaikan Tugas Pengantaran</button>
+                        </div>
+
+                        <!-- Info Tanda Terima & Foto Jika Status Selesai -->
+                        <div id="action-completed-info" style="display: none;">
+                            <div class="grid-2">
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">Tanda Tangan Petugas</label>
+                                    <img id="img-ttd-petugas" style="max-width: 100%; height: 80px; border: 1px solid var(--border-color); border-radius: 4px;" src="" alt="TTD Petugas">
+                                </div>
+                                <div>
+                                    <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted);">Tanda Tangan Nasabah</label>
+                                    <img id="img-ttd-nasabah" style="max-width: 100%; height: 80px; border: 1px solid var(--border-color); border-radius: 4px;" src="" alt="TTD Nasabah">
+                                </div>
+                            </div>
+                            <div style="margin-top: 15px;">
+                                <label style="font-size: 11px; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 5px;">Foto Bukti Tanda Terima</label>
+                                <img id="img-foto-bukti" style="max-width: 100%; max-height: 250px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); display: block;" src="" alt="Foto Bukti">
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Panel Cetak Tanda Terima (Khusus Admin/Petugas jika status sesuai) -->
+                    <div class="detail-section" id="print-panel" style="display: none; margin-top: 15px; background: #f0fdf4; padding: 16px; border-radius: var(--radius-sm); border: 1px solid #bbf7d0;">
+                        <h4 style="color: var(--success); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">🖨️ Cetak Dokumen Tanda Terima</h4>
+                        <div style="display:flex; gap:12px;">
+                            <button class="btn btn-secondary" id="btn-print-ttd-petugas" style="flex:1;">Cetak Tanda Terima Petugas</button>
+                            <button class="btn btn-primary" id="btn-print-ttd-nasabah" style="flex:1;">Cetak Tanda Terima Nasabah</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Area Print (Tersembunyi, hanya muncul saat print) -->
+    <div id="print-area"></div>
+
+    <!-- Load Config and App Scripts -->
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
