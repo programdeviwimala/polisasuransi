@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tanda Terima Polis Asuransi - BPR Cahaya Fajar</title>
+    
+    <!-- Google Fonts & Stylesheet -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Supabase JS Client CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+
+    <style>
+        body {
+            background-color: #f1f5f9;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+        }
+        .receipt-container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 750px;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            border: 1px solid #e2e8f0;
+            box-sizing: border-box;
+        }
+        .loading-state {
+            text-align: center;
+            padding: 40px;
+            font-family: 'Outfit', sans-serif;
+            color: #64748b;
+        }
+        .btn-print-public {
+            display: block;
+            width: 100%;
+            text-align: center;
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 24px;
+            transition: background 0.2s;
+        }
+        .btn-print-public:hover {
+            background: #1d4ed8;
+        }
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            .receipt-container {
+                box-shadow: none;
+                border: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .btn-print-public {
+                display: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="receipt-container" id="receipt-content">
+        <div class="loading-state" id="loading-state">
+            <h3 style="margin-bottom: 8px;">⏳ Memuat Tanda Terima...</h3>
+            <p style="font-size: 13px;">Sedang mengambil data resmi dari sistem BPR Cahaya Fajar.</p>
+        </div>
+        <div id="error-state" class="loading-state" style="display: none; color: #ef4444;">
+            <h3>⚠️ Tanda Terima Tidak Ditemukan</h3>
+            <p style="font-size: 13px; margin-top: 8px;">Tautan tidak valid atau data sudah dihapus.</p>
+        </div>
+        <div id="main-receipt" style="display: none;">
+            <!-- Render Tanda Terima Nasabah -->
+            <div class="print-header">
+                <h1>Tanda Terima Polis Asuransi</h1>
+                <p>Bukti Penerimaan Resmi Polis oleh Nasabah</p>
+            </div>
+
+            <div class="print-title">Bukti Serah Terima Resmi</div>
+
+            <table class="print-table" style="margin-bottom: 12px;">
+                <tr><td>Nama Nasabah</td><td id="rec-nama">-</td></tr>
+                <tr><td>No. PK (Perjanjian Kredit)</td><td id="rec-pk">-</td></tr>
+                <tr><td>Tanggal Terima Nasabah</td><td id="rec-tanggal">-</td></tr>
+            </table>
+
+            <h4 style="margin: 20px 0 6px 0; font-size:12px; text-transform:uppercase; color:#475569;">Daftar Jaminan Kendaraan:</h4>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size:12px;">
+                <thead>
+                    <tr style="background: #f1f5f9; text-align: left;">
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; text-align:center; width:5%; background: #f1f5f9;">No</th>
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; background: #f1f5f9;">Merk</th>
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; background: #f1f5f9;">Tipe</th>
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; text-align:center; width:10%; background: #f1f5f9;">Tahun</th>
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; text-align:right; background: #f1f5f9;">Harga Taksasi</th>
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; text-align:center; background: #f1f5f9;">Asuransi</th>
+                        <th style="border: 1px solid #e2e8f0; padding: 8px; background: #f1f5f9;">No. Polis</th>
+                    </tr>
+                </thead>
+                <tbody id="rec-jaminan-rows">
+                    <!-- Dinamis -->
+                </tbody>
+            </table>
+
+            <div id="rec-foto-wrapper" style="margin-bottom:24px; text-align:center; display:none;">
+                <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:#64748b; margin-bottom:8px;">Foto Bukti Tanda Terima (Nasabah Menerima Polis)</div>
+                <img id="rec-foto-bukti" src="" alt="Foto Bukti" style="max-width:100%; max-height:220px; border:1px solid #e2e8f0; border-radius:8px; object-fit:cover;">
+            </div>
+
+            <div class="print-signature-section" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+                <div class="print-signature-box">
+                    <div class="label">Admin Kantor</div>
+                    <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Tanda Tangan Manual)</div>
+                    <div style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Tanda Tangan</div>
+                    <div class="signer-name" id="rec-admin">Admin</div>
+                </div>
+                <div class="print-signature-box">
+                    <div class="label">Petugas Lapangan</div>
+                    <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Digital/Otomatis)</div>
+                    <img id="rec-ttd-petugas" style="display: none;" src="" alt="Tanda Tangan Petugas">
+                    <div id="rec-ttd-petugas-empty" style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Belum TTD</div>
+                    <div class="signer-name" id="rec-petugas">Petugas Lapangan</div>
+                </div>
+                <div class="print-signature-box">
+                    <div class="label">Penerima (Nasabah)</div>
+                    <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Digital/Otomatis)</div>
+                    <img id="rec-ttd-nasabah" style="display: none;" src="" alt="Tanda Tangan Nasabah">
+                    <div id="rec-ttd-nasabah-empty" style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Belum TTD</div>
+                    <div class="signer-name" id="rec-nasabah-signer">_______________</div>
+                </div>
+            </div>
+
+            <div class="print-footer" style="margin-top:24px;">
+                Dokumen Resmi Online &bull; BPR Cahaya Fajar Jatiwangi &bull; Sistem PolisTrack
+            </div>
+
+            <button class="btn-print-public" onclick="window.print()">🖨️ Cetak / Simpan Tanda Terima</button>
+        </div>
+    </div>
+
+    <script>
+        let supabaseClient;
+        if (typeof SUPABASE_URL !== 'undefined') {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        }
+
+        function formatTanggal(dateStr) {
+            if (!dateStr) return "-";
+            const d = new Date(dateStr);
+            const options = { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" };
+            return d.toLocaleDateString("id-ID", options);
+        }
+
+        function formatRupiah(angka) {
+            if (!angka) return "-";
+            return "Rp " + parseFloat(angka).toLocaleString("id-ID");
+        }
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            const params = new URLSearchParams(window.location.search);
+            const jaminanId = params.get("id");
+
+            if (!jaminanId || !supabaseClient) {
+                document.getElementById("loading-state").style.display = "none";
+                document.getElementById("error-state").style.display = "block";
+                return;
+            }
+
+            try {
+                // 1. Ambil data jaminan_polis & nasabah
+                const { data: item, error } = await supabaseClient
+                    .from("jaminan_polis")
+                    .select(`
+                        *,
+                        nasabah (
+                            id,
+                            nama_nasabah,
+                            no_pk,
+                            nama_marketing,
+                            created_at
+                        )
+                    `)
+                    .eq("id", jaminanId)
+                    .maybeSingle();
+
+                if (error || !item) throw error || new Error("Data kosong");
+
+                const nasabah = item.nasabah || {};
+
+                // 2. Ambil semua kendaraan nasabah ini
+                const { data: allJaminan } = await supabaseClient
+                    .from("jaminan_polis")
+                    .select("*")
+                    .eq("nasabah_id", item.nasabah_id);
+
+                // 3. Tampilkan data ke UI
+                document.getElementById("rec-nama").innerText = nasabah.nama_nasabah || "-";
+                document.getElementById("rec-pk").innerText = nasabah.no_pk || "-";
+                document.getElementById("rec-tanggal").innerText = formatTanggal(item.updated_at);
+                document.getElementById("rec-petugas").innerText = item.petugas_lapangan || "Petugas Lapangan";
+                document.getElementById("rec-nasabah-signer").innerText = nasabah.nama_nasabah || "_______________";
+
+                // Tanda tangan
+                if (item.ttd_petugas) {
+                    document.getElementById("rec-ttd-petugas").src = item.ttd_petugas;
+                    document.getElementById("rec-ttd-petugas").style.display = "block";
+                    document.getElementById("rec-ttd-petugas-empty").style.display = "none";
+                }
+                if (item.ttd_nasabah) {
+                    document.getElementById("rec-ttd-nasabah").src = item.ttd_nasabah;
+                    document.getElementById("rec-ttd-nasabah").style.display = "block";
+                    document.getElementById("rec-ttd-nasabah-empty").style.display = "none";
+                }
+
+                // Foto Bukti
+                if (item.foto_bukti) {
+                    document.getElementById("rec-foto-bukti").src = item.foto_bukti;
+                    document.getElementById("rec-foto-wrapper").style.display = "block";
+                }
+
+                // Baris jaminan
+                const tbody = document.getElementById("rec-jaminan-rows");
+                tbody.innerHTML = "";
+                if (allJaminan) {
+                    allJaminan.forEach((j, index) => {
+                        const tr = document.createElement("tr");
+                        tr.innerHTML = `
+                            <td style="text-align: center; border: 1px solid #e2e8f0; padding: 8px; font-weight: normal; background: none;">${index + 1}</td>
+                            <td style="border: 1px solid #e2e8f0; padding: 8px; font-weight:600;">${j.merk_kendaraan}</td>
+                            <td style="border: 1px solid #e2e8f0; padding: 8px;">${j.tipe_kendaraan}</td>
+                            <td style="border: 1px solid #e2e8f0; padding: 8px; text-align:center;">${j.tahun_kendaraan}</td>
+                            <td style="border: 1px solid #e2e8f0; padding: 8px; text-align:right;">${formatRupiah(j.harga_taksasi)}</td>
+                            <td style="border: 1px solid #e2e8f0; padding: 8px; text-align:center;">${j.asuransi_pilihan}</td>
+                            <td style="border: 1px solid #e2e8f0; padding: 8px;">${j.no_polis || "-"}</td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+
+                // Hilangkan loading, tampilkan tanda terima
+                document.getElementById("loading-state").style.display = "none";
+                document.getElementById("main-receipt").style.display = "block";
+
+            } catch (err) {
+                console.error("Gagal memuat tanda terima:", err);
+                document.getElementById("loading-state").style.display = "none";
+                document.getElementById("error-state").style.display = "block";
+            }
+        });
+    </script>
+</body>
+</html>

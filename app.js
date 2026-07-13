@@ -1385,7 +1385,7 @@ async function sharePdfTandaTerima(item) {
         filename:     `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { 
-            scale: 2, 
+            scale: 1, // Turunkan ke 1 agar tidak crash memori kanvas pada browser HP (menghindari PDF kosong)
             useCORS: true, 
             logging: false,
             width: 794,
@@ -1456,6 +1456,9 @@ async function kirimWhatsApp(item) {
         `${idx + 1}. ${j.merk_kendaraan} ${j.tipe_kendaraan} (${j.tahun_kendaraan})\n   No. Polis: ${j.no_polis || 'Belum ada'}`
     ).join('\n');
 
+    // URL halaman publik di GitHub Pages
+    const publicReceiptUrl = `https://programdewinimals.github.io/polisasuransi/tanda_terima.html?id=${item.id}`;
+
     const pesan =
 `*TANDA TERIMA POLIS ASURANSI*
 ━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1468,7 +1471,9 @@ ${daftarJaminan}
 Tanggal Serah Terima: *${tanggal}*
 Diserahkan oleh: *${currentUser ? currentUser.username : 'Admin'}*
 ━━━━━━━━━━━━━━━━━━━━━━━━
-_Harap disimpan sebagai bukti penerimaan polis._
+*Link Tanda Terima Resmi Anda:*
+${publicReceiptUrl}
+
 _BPR Cahaya Fajar Jatiwangi_`;
 
     const url = `https://wa.me/${nomorWa.trim()}?text=${encodeURIComponent(pesan)}`;
