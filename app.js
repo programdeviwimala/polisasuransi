@@ -1197,6 +1197,8 @@ async function printTandaTerima(jenis, item) {
 
     // Jalankan dialog print browser
     window.print();
+}
+
 // ==========================================
 // FUNGSI KIRIM WHATSAPP CLICK-TO-CHAT
 // ==========================================
