@@ -1336,17 +1336,17 @@ async function sharePdfTandaTerima(item) {
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // BUAT KONTAINER SEMENTARA YANG TERJAMIN TAMPIL DI VIEWPORT (DI BELAKANG LAYAR UTAMA)
+    // BUAT KONTAINER SEMENTARA YANG TERJAMIN TAMPIL (DI BAWAH HALAMAN / OUT OF VIEWPORT)
     const tempContainer = document.createElement("div");
-    tempContainer.style.position = "fixed";
+    tempContainer.style.position = "absolute";
     tempContainer.style.left = "0";
-    tempContainer.style.top = "0";
+    tempContainer.style.top = "100vh"; // Posisikan di bawah lipatan halaman agar tidak terlihat oleh user
     tempContainer.style.width = "794px"; // Ukuran A4 standar lebar
-    tempContainer.style.zIndex = "-9999"; // Sembunyikan di bawah elemen aplikasi utama
-    tempContainer.style.padding = "30px";
     tempContainer.style.background = "#ffffff";
+    tempContainer.style.padding = "30px";
     tempContainer.style.fontFamily = "'Plus Jakarta Sans', Arial, sans-serif";
     tempContainer.style.color = "#1e293b";
+    tempContainer.style.boxSizing = "border-box";
     
     // Salin seluruh HTML tanda terima dari printArea ke kontainer sementara
     tempContainer.innerHTML = printArea.innerHTML;
