@@ -790,6 +790,8 @@ async function openDetailModal(item) {
         btnPrintNasabah.style.display = "block";
         const btnKirimWa = document.getElementById("btn-kirim-wa");
         if (btnKirimWa) btnKirimWa.style.display = "block";
+        const btnSharePdf = document.getElementById("btn-share-pdf");
+        if (btnSharePdf) btnSharePdf.style.display = "block";
     }
 
     modalDetail.classList.add("active");
@@ -1020,6 +1022,14 @@ function setupPrintButtons() {
             await kirimWhatsApp(currentModalItem);
         });
     }
+
+    const btnSharePdf = document.getElementById("btn-share-pdf");
+    if (btnSharePdf) {
+        btnSharePdf.addEventListener("click", async () => {
+            if (!currentModalItem) return;
+            await sharePdfTandaTerima(currentModalItem);
+        });
+    }
 }
 
 function formatTanggal(dateStr) {
@@ -1197,6 +1207,171 @@ async function printTandaTerima(jenis, item) {
 
     // Jalankan dialog print browser
     window.print();
+}
+
+// ==========================================
+// FUNGSI EXPORT & SHARE PDF (HP / LAPANGAN)
+// ==========================================
+async function sharePdfTandaTerima(item) {
+    const printArea = document.getElementById("print-area");
+    if (!printArea) return;
+
+    // Tampilkan loading alert
+    const btnShare = document.getElementById("btn-share-pdf");
+    const originalText = btnShare.innerHTML;
+    btnShare.disabled = true;
+    btnShare.innerHTML = "⏳ Menyiapkan PDF...";
+
+    const nasabah = item.nasabah || {};
+    
+    // 1. Ambil data jaminan untuk di-render di HTML printArea (agar identik)
+    let allJaminan = [];
+    try {
+        const { data } = await supabaseClient
+            .from("jaminan_polis")
+            .select("*")
+            .eq("nasabah_id", item.nasabah_id);
+        if (data) allJaminan = data;
+    } catch (err) {
+        console.error("Gagal ambil jaminan:", err);
+    }
+
+    let jaminanRowsHtml = '';
+    allJaminan.forEach((j, index) => {
+        jaminanRowsHtml += `
+            <tr>
+                <td style="text-align: center; border: 1px solid #e2e8f0; padding: 6px; font-weight: normal; background: none;">${index + 1}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 6px; font-weight:600;">${j.merk_kendaraan}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 6px;">${j.tipe_kendaraan}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 6px; text-align:center;">${j.tahun_kendaraan}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 6px; text-align:right;">${formatRupiah(j.harga_taksasi)}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 6px; text-align:center;">${j.asuransi_pilihan}</td>
+                <td style="border: 1px solid #e2e8f0; padding: 6px;">${j.no_polis || "-"}</td>
+            </tr>
+        `;
+    });
+
+    const tanggalCetak = new Date().toLocaleDateString("id-ID", {
+        day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
+    });
+
+    // Render HTML Tanda Terima Nasabah ke Print Area
+    printArea.innerHTML = `
+        <div class="print-header">
+            <h1>Tanda Terima Polis Asuransi</h1>
+            <p>Bukti Penerimaan Polis oleh Nasabah</p>
+        </div>
+
+        <div class="print-title">Bukti Penerimaan Polis oleh Nasabah</div>
+
+        <table class="print-table" style="margin-bottom: 12px;">
+            <tr><td>Nama Nasabah</td><td>${nasabah.nama_nasabah || "-"}</td></tr>
+            <tr><td>No. PK (Perjanjian Kredit)</td><td>${nasabah.no_pk || "-"}</td></tr>
+            <tr><td>Tanggal Terima Nasabah</td><td>${formatTanggal(item.updated_at)}</td></tr>
+        </table>
+
+        <h4 style="margin: 16px 0 6px 0; font-size:12px; text-transform:uppercase; color:#475569;">Daftar Jaminan Kendaraan:</h4>
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size:12px;">
+            <thead>
+                <tr style="background: #f1f5f9; text-align: left;">
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; text-align:center; width:5%; background: #f1f5f9;">No</th>
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; background: #f1f5f9;">Merk</th>
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; background: #f1f5f9;">Tipe</th>
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; text-align:center; width:10%; background: #f1f5f9;">Tahun</th>
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; text-align:right; background: #f1f5f9;">Harga Taksasi</th>
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; text-align:center; background: #f1f5f9;">Asuransi</th>
+                    <th style="border: 1px solid #e2e8f0; padding: 6px; background: #f1f5f9;">No. Polis</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${jaminanRowsHtml}
+            </tbody>
+        </table>
+
+        ${item.foto_bukti ? `
+            <div style="margin-bottom:20px; text-align:center;">
+                <div style="font-size:11px; font-weight:600; text-transform:uppercase; color:#64748b; margin-bottom:8px;">Foto Bukti Tanda Terima (Nasabah Menerima Polis)</div>
+                <img src="${item.foto_bukti}" alt="Foto Bukti" style="max-width:280px; max-height:180px; border:1px solid #e2e8f0; border-radius:6px; object-fit:cover;">
+            </div>
+        ` : ""}
+
+        <div class="print-signature-section" style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px;">
+            <div class="print-signature-box">
+                <div class="label">Admin Kantor</div>
+                <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Tanda Tangan Manual)</div>
+                <div style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Tanda Tangan</div>
+                <div class="signer-name">Admin</div>
+            </div>
+            <div class="print-signature-box">
+                <div class="label">Petugas Lapangan</div>
+                <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Digital/Otomatis)</div>
+                ${item.ttd_petugas
+                    ? `<img src="${item.ttd_petugas}" alt="Tanda Tangan Petugas">`
+                    : `<div style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Belum TTD</div>`
+                }
+                <div class="signer-name">${item.petugas_lapangan || "Petugas Lapangan"}</div>
+            </div>
+            <div class="print-signature-box">
+                <div class="label">Penerima (Nasabah)</div>
+                <div class="label" style="font-size:10px; color:#64748b; margin-bottom:4px;">(Digital/Otomatis)</div>
+                ${item.ttd_nasabah
+                    ? `<img src="${item.ttd_nasabah}" alt="Tanda Tangan Nasabah">`
+                    : `<div style="height: 90px; border: 1px solid #e2e8f0; border-radius:4px; background:#f8fafc; display:flex; align-items:center; justify-content:center; color:#94a3b8; font-style:italic; font-size:11px;">Belum TTD</div>`
+                }
+                <div class="signer-name">${nasabah.nama_nasabah || "_______________"}</div>
+            </div>
+        </div>
+
+        <div class="print-footer" style="margin-top:20px;">
+            Dicetak pada: ${tanggalCetak} &nbsp;|&nbsp; Sistem Monitoring Polis Asuransi
+        </div>
+    `;
+
+    // Konfigurasi html2pdf
+    const opt = {
+        margin:       10,
+        filename:     `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    // Trik memunculkan DOM offscreen agar ter-render sempurna oleh html2canvas
+    printArea.style.display = "block";
+    printArea.style.position = "absolute";
+    printArea.style.left = "-9999px";
+    printArea.style.top = "0";
+
+    try {
+        const blob = await html2pdf().from(printArea).set(opt).output('blob');
+        
+        // Kembalikan style semula
+        printArea.style.display = "none";
+        printArea.style.position = "";
+        printArea.style.left = "";
+        printArea.style.top = "";
+
+        const file = new File([blob], `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`, { type: "application/pdf" });
+
+        // Cek dukungan Web Share API untuk sharing file
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+                files: [file],
+                title: `Tanda Terima - ${nasabah.nama_nasabah || 'Nasabah'}`,
+                text: `Berikut file PDF tanda terima polis asuransi Anda.`
+            });
+        } else {
+            // Fallback: Unduh otomatis di desktop
+            html2pdf().from(printArea).set(opt).save();
+            alert("Browser tidak mendukung share langsung. File PDF tanda terima telah diunduh otomatis. Silakan kirim file tersebut manual ke WhatsApp.");
+        }
+    } catch (err) {
+        console.error("Gagal ekspor PDF:", err);
+        alert("Terjadi kesalahan saat menyiapkan PDF.");
+    } finally {
+        btnShare.disabled = false;
+        btnShare.innerHTML = originalText;
+    }
 }
 
 // ==========================================
