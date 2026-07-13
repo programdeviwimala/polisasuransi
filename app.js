@@ -1379,12 +1379,22 @@ async function sharePdfTandaTerima(item) {
     // Beri waktu 300ms agar browser merender & menyusun layout elemen di background
     await new Promise(resolve => setTimeout(resolve, 350));
 
-    // Konfigurasi html2pdf
+    // Konfigurasi html2pdf dengan penyesuaian ukuran canvas & scroll bypass untuk HP
     const opt = {
         margin:       10,
         filename:     `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        html2canvas:  { 
+            scale: 2, 
+            useCORS: true, 
+            logging: false,
+            width: 794,
+            height: tempContainer.scrollHeight,
+            windowWidth: 794,
+            windowHeight: tempContainer.scrollHeight,
+            scrollX: 0,
+            scrollY: 0
+        },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
