@@ -1332,24 +1332,32 @@ async function sharePdfTandaTerima(item) {
         margin:       10,
         filename:     `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
 
-    // Trik memunculkan DOM offscreen agar ter-render sempurna oleh html2canvas
-    printArea.style.display = "block";
-    printArea.style.position = "absolute";
-    printArea.style.left = "-9999px";
-    printArea.style.top = "0";
+    // BUAT KONTAINER SEMENTARA YANG TERJAMIN TAMPIL (DISPLAY BLOCK & WIDTH EKSPLESIT)
+    const tempContainer = document.createElement("div");
+    tempContainer.style.position = "absolute";
+    tempContainer.style.left = "-9999px";
+    tempContainer.style.top = "0";
+    tempContainer.style.width = "750px";
+    tempContainer.style.padding = "24px";
+    tempContainer.style.background = "#ffffff";
+    tempContainer.style.fontFamily = "'Plus Jakarta Sans', Arial, sans-serif";
+    tempContainer.style.color = "#1e293b";
+    
+    // Salin seluruh HTML tanda terima dari printArea ke kontainer sementara
+    tempContainer.innerHTML = printArea.innerHTML;
+    
+    // Sisipkan kontainer sementara ke body agar di-render oleh browser
+    document.body.appendChild(tempContainer);
 
     try {
-        const blob = await html2pdf().from(printArea).set(opt).output('blob');
+        const blob = await html2pdf().from(tempContainer).set(opt).output('blob');
         
-        // Kembalikan style semula
-        printArea.style.display = "none";
-        printArea.style.position = "";
-        printArea.style.left = "";
-        printArea.style.top = "";
+        // Hapus kontainer sementara dari DOM
+        document.body.removeChild(tempContainer);
 
         const file = new File([blob], `Tanda_Terima_${nasabah.nama_nasabah || 'Nasabah'}.pdf`, { type: "application/pdf" });
 
@@ -1367,6 +1375,10 @@ async function sharePdfTandaTerima(item) {
         }
     } catch (err) {
         console.error("Gagal ekspor PDF:", err);
+        // Hapus kontainer jika error
+        if (document.body.contains(tempContainer)) {
+            document.body.removeChild(tempContainer);
+        }
         alert("Terjadi kesalahan saat menyiapkan PDF.");
     } finally {
         btnShare.disabled = false;
