@@ -872,27 +872,43 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-delete-card {
-    position: absolute;
-    top: 8px;
-    right: 8px;
     background: none;
     border: none;
     font-size: 15px;
     cursor: pointer;
     opacity: 0;
     transition: opacity 0.15s ease, transform 0.15s ease;
-    padding: 2px 5px;
+    padding: 4px 7px;
     border-radius: 4px;
     z-index: 5;
     line-height: 1;
 }
 
-.policy-card:hover .btn-delete-card {
+.btn-edit-card {
+    background: none;
+    border: none;
+    font-size: 15px;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.15s ease, transform 0.15s ease;
+    padding: 4px 7px;
+    border-radius: 4px;
+    z-index: 5;
+    line-height: 1;
+}
+
+.policy-card:hover .btn-delete-card,
+.policy-card:hover .btn-edit-card {
     opacity: 1;
 }
 
 .btn-delete-card:hover {
     background-color: #fff1f2;
+    transform: scale(1.2);
+}
+
+.btn-edit-card:hover {
+    background-color: #eff6ff;
     transform: scale(1.2);
 }
 

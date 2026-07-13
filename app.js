@@ -394,12 +394,15 @@ async function fetchDataAdmin() {
                     <span>🏢 Asuransi: ${item.asuransi_pilihan}</span>
                     ${item.petugas_lapangan ? `<span>👤 Kurir: ${item.petugas_lapangan}</span>` : ''}
                 </div>
-                <button class="btn-delete-card" onclick="konfirmasiHapusNasabah(event, '${nasabahId}', '${item.nasabah?.nama_nasabah || 'Nasabah'}', '${item.nasabah?.no_pk || ''}')" title="Hapus nasabah ini">🗑️</button>
+                <div style="display:flex; gap:6px; position:absolute; bottom:12px; right:12px;">
+                    <button class="btn-edit-card" onclick="openEditNasabahModal(event, '${nasabahId}')" title="Edit data nasabah">✏️</button>
+                    <button class="btn-delete-card" onclick="konfirmasiHapusNasabah(event, '${nasabahId}', '${item.nasabah?.nama_nasabah || 'Nasabah'}', '${item.nasabah?.no_pk || ''}')" title="Hapus nasabah ini">🗑️</button>
+                </div>
             `;
 
-            // Klik kartu (bukan tombol hapus) untuk buka modal
+            // Klik kartu (bukan tombol hapus / edit) untuk buka modal
             card.addEventListener('click', (e) => {
-                if (e.target.classList.contains('btn-delete-card') || e.target.classList.contains('card-checkbox')) return;
+                if (e.target.classList.contains('btn-delete-card') || e.target.classList.contains('card-checkbox') || e.target.classList.contains('btn-edit-card')) return;
                 openDetailModal(item);
             });
 
@@ -2054,5 +2057,141 @@ if (btnExportExcel) {
         XLSX.writeFile(workbook, fileName);
     });
 }
+
+// ==========================================
+// FITUR EDIT DATA NASABAH
+// ==========================================
+const modalEditNasabah = document.getElementById("modal-edit-nasabah");
+const formEditNasabah = document.getElementById("form-edit-nasabah");
+
+document.getElementById("btn-close-edit-modal").onclick = () => modalEditNasabah.classList.remove("active");
+document.getElementById("btn-cancel-edit").onclick = () => modalEditNasabah.classList.remove("active");
+
+window.openEditNasabahModal = async function(event, nasabahId) {
+    event.stopPropagation();
+    try {
+        const { data: nasabah, error: nErr } = await supabaseClient
+            .from("nasabah").select("*").eq("id", nasabahId).single();
+        if (nErr) throw nErr;
+
+        const { data: jaminanList, error: jErr } = await supabaseClient
+            .from("jaminan_polis").select("*").eq("nasabah_id", nasabahId);
+        if (jErr) throw jErr;
+
+        document.getElementById("edit-nasabah-id").value = nasabah.id;
+        document.getElementById("edit-nama").value = nasabah.nama_nasabah || "";
+        document.getElementById("edit-marketing").value = nasabah.nama_marketing || "";
+        document.getElementById("edit-pk").value = nasabah.no_pk || "";
+        document.getElementById("edit-plafond").value = nasabah.plafond || "";
+        document.getElementById("edit-jangka").value = nasabah.jangka_waktu || "";
+        document.getElementById("edit-awal").value = nasabah.periode_awal || "";
+        document.getElementById("edit-akhir").value = nasabah.periode_akhir || "";
+        document.getElementById("edit-bunga").value = nasabah.bunga || "";
+        document.getElementById("edit-keterangan").value = nasabah.keterangan || "Baru";
+
+        const editJaminanContainer = document.getElementById("edit-jaminan-container");
+        editJaminanContainer.innerHTML = "";
+        (jaminanList || []).forEach((j, idx) => {
+            const box = document.createElement("div");
+            box.className = "jaminan-item-box";
+            box.setAttribute("data-jaminan-id", j.id);
+            box.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                    <strong style="font-size:13px; color:var(--primary);">Kendaraan ${idx + 1}</strong>
+                </div>
+                <div class="grid-3">
+                    <div class="form-group">
+                        <label>Merk Kendaraan</label>
+                        <input type="text" class="form-control edit-jaminan-merk" value="${j.merk_kendaraan || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tipe Kendaraan</label>
+                        <input type="text" class="form-control edit-jaminan-tipe" value="${j.tipe_kendaraan || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tahun Kendaraan</label>
+                        <input type="number" class="form-control edit-jaminan-tahun" value="${j.tahun_kendaraan || ''}" required>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label>Harga Taksasi (Rp)</label>
+                        <input type="number" class="form-control edit-jaminan-taksasi" value="${j.harga_taksasi || ''}" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Asuransi Pilihan</label>
+                        <select class="form-control edit-jaminan-asuransi" required>
+                            <option value="MAG" ${j.asuransi_pilihan === 'MAG' ? 'selected' : ''}>MAG</option>
+                            <option value="CHUBB" ${j.asuransi_pilihan === 'CHUBB' ? 'selected' : ''}>CHUBB</option>
+                            <option value="Ramayana" ${j.asuransi_pilihan === 'Ramayana' ? 'selected' : ''}>Ramayana</option>
+                            <option value="Allianz" ${j.asuransi_pilihan === 'Allianz' ? 'selected' : ''}>Allianz</option>
+                            <option value="Belum Ditentukan" ${j.asuransi_pilihan === 'Belum Ditentukan' ? 'selected' : ''}>Belum Ditentukan</option>
+                            <option value="Lainnya" ${j.asuransi_pilihan === 'Lainnya' ? 'selected' : ''}>Lainnya</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            editJaminanContainer.appendChild(box);
+        });
+
+        modalEditNasabah.classList.add("active");
+    } catch (err) {
+        console.error("Gagal buka modal edit:", err);
+        alert("Gagal memuat data nasabah untuk diedit.");
+    }
+};
+
+formEditNasabah.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const nasabahId = document.getElementById("edit-nasabah-id").value;
+    const btnSave = formEditNasabah.querySelector("button[type='submit']");
+    const originalText = btnSave.innerHTML;
+    btnSave.disabled = true;
+    btnSave.innerHTML = "⏳ Menyimpan...";
+    try {
+        const { error: nErr } = await supabaseClient
+            .from("nasabah")
+            .update({
+                nama_nasabah: document.getElementById("edit-nama").value.trim(),
+                nama_marketing: document.getElementById("edit-marketing").value.trim(),
+                no_pk: document.getElementById("edit-pk").value.trim(),
+                plafond: parseFloat(document.getElementById("edit-plafond").value),
+                jangka_waktu: parseInt(document.getElementById("edit-jangka").value),
+                periode_awal: document.getElementById("edit-awal").value,
+                periode_akhir: document.getElementById("edit-akhir").value,
+                bunga: parseFloat(document.getElementById("edit-bunga").value),
+                keterangan: document.getElementById("edit-keterangan").value
+            })
+            .eq("id", nasabahId);
+        if (nErr) throw nErr;
+
+        const jaminanBoxes = document.querySelectorAll("#edit-jaminan-container .jaminan-item-box");
+        for (const box of jaminanBoxes) {
+            const jaminanId = box.getAttribute("data-jaminan-id");
+            const { error: jErr } = await supabaseClient
+                .from("jaminan_polis")
+                .update({
+                    merk_kendaraan: box.querySelector(".edit-jaminan-merk").value.trim(),
+                    tipe_kendaraan: box.querySelector(".edit-jaminan-tipe").value.trim(),
+                    tahun_kendaraan: parseInt(box.querySelector(".edit-jaminan-tahun").value),
+                    harga_taksasi: parseFloat(box.querySelector(".edit-jaminan-taksasi").value),
+                    asuransi_pilihan: box.querySelector(".edit-jaminan-asuransi").value
+                })
+                .eq("id", jaminanId);
+            if (jErr) throw jErr;
+        }
+
+        alert("✅ Data nasabah berhasil diperbarui!");
+        modalEditNasabah.classList.remove("active");
+        fetchDataAdmin();
+    } catch (err) {
+        console.error("Gagal simpan edit nasabah:", err);
+        alert(`Gagal menyimpan: ${err.message || JSON.stringify(err)}`);
+    } finally {
+        btnSave.disabled = false;
+        btnSave.innerHTML = originalText;
+    }
+});
+
 
 
