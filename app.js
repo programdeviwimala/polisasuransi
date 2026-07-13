@@ -1955,7 +1955,8 @@ async function fetchDataLaporan() {
 
 function renderLaporanTable() {
     const tbody = document.getElementById("tbody-laporan");
-    const filterStatus = document.getElementById("laporan-filter-status").value;
+    const filterEl = document.getElementById("laporan-filter-status");
+    const filterStatus = filterEl ? filterEl.value : "Semua";
     if (!tbody) return;
 
     let filteredData = laporanDataRaw;
@@ -2010,7 +2011,8 @@ if (filterStatusEl) {
 const btnExportExcel = document.getElementById("btn-export-excel");
 if (btnExportExcel) {
     btnExportExcel.addEventListener("click", () => {
-        const filterStatus = document.getElementById("laporan-filter-status").value;
+        const filterElExport = document.getElementById("laporan-filter-status");
+        const filterStatus = filterElExport ? filterElExport.value : "Semua";
         let filteredData = laporanDataRaw;
         if (filterStatus !== "Semua") {
             filteredData = laporanDataRaw.filter(item => item.status === filterStatus);
