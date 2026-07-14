@@ -2304,23 +2304,47 @@ async function populateMarketingDropdowns(selectedValue = "") {
             const select = document.getElementById(id);
             if (!select) return;
 
-            // Simpan nilai terpilih sebelumnya (jika ada)
-            const currentVal = selectedValue || select.value;
+            // Nilai yang ingin dipilih (pakai selectedValue jika ada, else pakai nilai dropdown saat ini)
+            const currentVal = (selectedValue || select.value || "").trim();
+            const currentValLower = currentVal.toLowerCase();
 
             // Reset & isi ulang
             select.innerHTML = `<option value="">-- Pilih Marketing --</option>`;
+
+            let isFound = false;
             (users || []).forEach(u => {
                 const opt = document.createElement("option");
                 opt.value = u.username;
                 opt.textContent = u.username;
-                if (u.username === currentVal) opt.selected = true;
+                // Pencocokan case-insensitive + partial (nama DB mengandung nama tersimpan atau sebaliknya)
+                if (
+                    currentVal !== "" && (
+                        u.username.toLowerCase() === currentValLower ||
+                        u.username.toLowerCase().includes(currentValLower) ||
+                        currentValLower.includes(u.username.toLowerCase())
+                    )
+                ) {
+                    opt.selected = true;
+                    isFound = true;
+                }
                 select.appendChild(opt);
             });
+
+            // Jika nama marketing tidak ada di daftar user lapangan,
+            // tambahkan sebagai opsi sementara agar datanya tidak hilang
+            if (!isFound && currentVal !== "") {
+                const optFallback = document.createElement("option");
+                optFallback.value = currentVal;
+                optFallback.textContent = `${currentVal} (tidak terdaftar)`;
+                optFallback.selected = true;
+                select.insertBefore(optFallback, select.children[1]);
+            }
         });
     } catch (err) {
         console.error("Gagal mengambil daftar marketing:", err);
     }
 }
+
 
 // ==========================================
 // HAPUS SATU JAMINAN (KENDARAAN)
