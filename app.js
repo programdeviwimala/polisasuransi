@@ -2153,6 +2153,71 @@ const formEditNasabah = document.getElementById("form-edit-nasabah");
 document.getElementById("btn-close-edit-modal").onclick = () => modalEditNasabah.classList.remove("active");
 document.getElementById("btn-cancel-edit").onclick = () => modalEditNasabah.classList.remove("active");
 
+// Tambah form input jaminan baru di dalam modal edit nasabah
+const btnEditAddJaminan = document.getElementById("btn-edit-add-jaminan");
+if (btnEditAddJaminan) {
+    btnEditAddJaminan.onclick = () => {
+        const editJaminanContainer = document.getElementById("edit-jaminan-container");
+        const idx = editJaminanContainer.querySelectorAll(".jaminan-item-box").length;
+        const box = document.createElement("div");
+        box.className = "jaminan-item-box";
+        box.setAttribute("data-jaminan-id", "new");
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <strong style="font-size:13px; color:var(--primary);">Kendaraan ${idx + 1} (Baru)</strong>
+                <button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px; display: flex; align-items: center; gap: 4px; background-color: var(--danger);" onclick="this.closest('.jaminan-item-box').remove(); renumberEditJaminan();">
+                    🗑️ Batal Tambah
+                </button>
+            </div>
+            <div class="grid-3">
+                <div class="form-group">
+                    <label>Merk Kendaraan</label>
+                    <input type="text" class="form-control edit-jaminan-merk" required placeholder="Contoh: Toyota">
+                </div>
+                <div class="form-group">
+                    <label>Tipe Kendaraan</label>
+                    <input type="text" class="form-control edit-jaminan-tipe" required placeholder="Contoh: Avanza G Veloz">
+                </div>
+                <div class="form-group">
+                    <label>Tahun Kendaraan</label>
+                    <input type="number" class="form-control edit-jaminan-tahun" required placeholder="Tahun">
+                </div>
+            </div>
+            <div class="grid-2">
+                <div class="form-group">
+                    <label>Harga Taksasi (Rp)</label>
+                    <input type="number" class="form-control edit-jaminan-taksasi" required placeholder="Taksiran harga">
+                </div>
+                <div class="form-group">
+                    <label>Asuransi Pilihan</label>
+                    <select class="form-control edit-jaminan-asuransi" required>
+                        <option value="MAG">MAG</option>
+                        <option value="CHUBB">CHUBB</option>
+                        <option value="Ramayana">Ramayana</option>
+                        <option value="Allianz">Allianz</option>
+                        <option value="Belum Ditentukan" selected>Belum Ditentukan</option>
+                        <option value="Lainnya">Lainnya</option>
+                    </select>
+                </div>
+            </div>
+        `;
+        editJaminanContainer.appendChild(box);
+    };
+}
+
+window.renumberEditJaminan = function() {
+    const editJaminanContainer = document.getElementById("edit-jaminan-container");
+    const boxes = editJaminanContainer.querySelectorAll(".jaminan-item-box");
+    boxes.forEach((box, idx) => {
+        const titleEl = box.querySelector("strong");
+        if (titleEl) {
+            const isNew = box.getAttribute("data-jaminan-id") === "new";
+            titleEl.textContent = `Kendaraan ${idx + 1}${isNew ? ' (Baru)' : ''}`;
+        }
+    });
+};
+
+
 window.openEditNasabahModal = async function(event, nasabahId) {
     if (event) event.stopPropagation();
     try {
@@ -2259,18 +2324,32 @@ formEditNasabah.addEventListener("submit", async (e) => {
         const jaminanBoxes = document.querySelectorAll("#edit-jaminan-container .jaminan-item-box");
         for (const box of jaminanBoxes) {
             const jaminanId = box.getAttribute("data-jaminan-id");
-            const { error: jErr } = await supabaseClient
-                .from("jaminan_polis")
-                .update({
-                    merk_kendaraan: box.querySelector(".edit-jaminan-merk").value.trim(),
-                    tipe_kendaraan: box.querySelector(".edit-jaminan-tipe").value.trim(),
-                    tahun_kendaraan: parseInt(box.querySelector(".edit-jaminan-tahun").value),
-                    harga_taksasi: parseFloat(box.querySelector(".edit-jaminan-taksasi").value),
-                    asuransi_pilihan: box.querySelector(".edit-jaminan-asuransi").value
-                })
-                .eq("id", jaminanId);
-            if (jErr) throw jErr;
+            const jaminanData = {
+                merk_kendaraan: box.querySelector(".edit-jaminan-merk").value.trim(),
+                tipe_kendaraan: box.querySelector(".edit-jaminan-tipe").value.trim(),
+                tahun_kendaraan: parseInt(box.querySelector(".edit-jaminan-tahun").value),
+                harga_taksasi: parseFloat(box.querySelector(".edit-jaminan-taksasi").value),
+                asuransi_pilihan: box.querySelector(".edit-jaminan-asuransi").value
+            };
+
+            if (jaminanId && jaminanId !== "new") {
+                const { error: jErr } = await supabaseClient
+                    .from("jaminan_polis")
+                    .update(jaminanData)
+                    .eq("id", jaminanId);
+                if (jErr) throw jErr;
+            } else {
+                // Tambah data jaminan baru untuk nasabahId ini
+                const { error: jErr } = await supabaseClient
+                    .from("jaminan_polis")
+                    .insert([{
+                        nasabah_id: nasabahId,
+                        ...jaminanData
+                    }]);
+                if (jErr) throw jErr;
+            }
         }
+
 
         alert("✅ Data nasabah berhasil diperbarui!");
         modalEditNasabah.classList.remove("active");
