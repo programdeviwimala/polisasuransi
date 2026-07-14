@@ -432,6 +432,15 @@
              ========================================== -->
         <main id="section-lapangan" class="app-section">
             <h2 style="margin-bottom: 20px;">Daftar Pengantaran Polis Anda</h2>
+            
+            <!-- Search Bar Lapangan -->
+            <div class="search-bar-wrapper">
+                <div class="search-icon">🔍</div>
+                <input type="text" id="search-input-lapangan" class="search-input" placeholder="Cari berdasarkan Nama Nasabah, No PK, atau No Polis...">
+                <button class="btn btn-secondary" id="btn-clear-search-lapangan" style="display:none; padding: 10px 14px;">✕</button>
+            </div>
+            <div id="search-results-info-lapangan" style="display:none; font-size:13px; color:var(--text-muted); margin-bottom:12px; padding: 0 4px;"></div>
+
             <div id="lapangan-list" class="grid-2">
                 <!-- Kartu tugas diisi otomatis via JS -->
             </div>

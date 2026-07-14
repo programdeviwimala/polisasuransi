@@ -155,6 +155,28 @@ function showSection(sectionId) {
     document.querySelectorAll(".app-section").forEach(sec => sec.classList.remove("active"));
     const activeSection = document.getElementById(sectionId);
     if (activeSection) activeSection.classList.add("active");
+
+    // Reset input pencarian & info pencarian
+    const adminSearch = document.getElementById("search-input");
+    if (adminSearch) {
+        adminSearch.value = "";
+        const clearAdmin = document.getElementById("btn-clear-search");
+        if (clearAdmin) clearAdmin.style.display = "none";
+        const infoAdmin = document.getElementById("search-results-info");
+        if (infoAdmin) infoAdmin.style.display = "none";
+        // Tampilkan kembali semua kartu admin
+        document.querySelectorAll("#section-admin .policy-card").forEach(c => c.classList.remove("search-hidden", "search-match"));
+    }
+    const lapanganSearch = document.getElementById("search-input-lapangan");
+    if (lapanganSearch) {
+        lapanganSearch.value = "";
+        const clearLap = document.getElementById("btn-clear-search-lapangan");
+        if (clearLap) clearLap.style.display = "none";
+        const infoLap = document.getElementById("search-results-info-lapangan");
+        if (infoLap) infoLap.style.display = "none";
+        // Tampilkan kembali semua kartu lapangan
+        document.querySelectorAll("#section-lapangan .policy-card").forEach(c => c.classList.remove("search-hidden", "search-match"));
+    }
 }
 
 // Render Navigasi
@@ -937,6 +959,7 @@ document.getElementById("btn-lapangan-submit-done").addEventListener("click", as
 window.addEventListener("DOMContentLoaded", () => {
     autoLogin();
     setupSearch();
+    setupSearchLapangan();
     setupPrintButtons();
     setupUserManagement();
     setupExcelImport();
@@ -958,8 +981,8 @@ function setupSearch() {
         const keyword = searchInput.value.trim().toLowerCase();
 
         if (keyword.length === 0) {
-            // Reset: tampilkan semua kartu
-            document.querySelectorAll(".policy-card").forEach(card => {
+            // Reset: tampilkan semua kartu admin
+            document.querySelectorAll("#section-admin .policy-card").forEach(card => {
                 card.classList.remove("search-hidden", "search-match");
             });
             btnClearSearch.style.display = "none";
@@ -972,7 +995,57 @@ function setupSearch() {
         let matchCount = 0;
 
         // Filter kartu berdasarkan keyword
-        document.querySelectorAll(".policy-card").forEach(card => {
+        document.querySelectorAll("#section-admin .policy-card").forEach(card => {
+            const cardText = card.innerText.toLowerCase();
+            if (cardText.includes(keyword)) {
+                card.classList.remove("search-hidden");
+                card.classList.add("search-match");
+                matchCount++;
+            } else {
+                card.classList.add("search-hidden");
+                card.classList.remove("search-match");
+            }
+        });
+
+        searchResultsInfo.style.display = "block";
+        searchResultsInfo.innerHTML = matchCount > 0
+            ? `🔍 Ditemukan <strong>${matchCount}</strong> hasil untuk kata kunci "<em>${searchInput.value}</em>"`
+            : `🔍 Tidak ada hasil untuk kata kunci "<em>${searchInput.value}</em>"`;
+    });
+
+    btnClearSearch.addEventListener("click", () => {
+        searchInput.value = "";
+        searchInput.dispatchEvent(new Event("input"));
+        searchInput.focus();
+    });
+}
+
+function setupSearchLapangan() {
+    const searchInput = document.getElementById("search-input-lapangan");
+    const btnClearSearch = document.getElementById("btn-clear-search-lapangan");
+    const searchResultsInfo = document.getElementById("search-results-info-lapangan");
+
+    if (!searchInput) return;
+
+    searchInput.addEventListener("input", () => {
+        const keyword = searchInput.value.trim().toLowerCase();
+
+        if (keyword.length === 0) {
+            // Reset: tampilkan semua kartu lapangan
+            document.querySelectorAll("#section-lapangan .policy-card").forEach(card => {
+                card.classList.remove("search-hidden", "search-match");
+            });
+            btnClearSearch.style.display = "none";
+            searchResultsInfo.style.display = "none";
+            return;
+        }
+
+        btnClearSearch.style.display = "block";
+
+        let matchCount = 0;
+
+        // Filter kartu berdasarkan keyword
+        document.querySelectorAll("#section-lapangan .policy-card").forEach(card => {
             const cardText = card.innerText.toLowerCase();
             if (cardText.includes(keyword)) {
                 card.classList.remove("search-hidden");
