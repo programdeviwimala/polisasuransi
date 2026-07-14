@@ -397,7 +397,7 @@ async function fetchDataAdmin() {
                 </div>
                 <div style="display:flex; gap:6px; position:absolute; bottom:12px; right:12px;">
                     <button class="btn-edit-card" onclick="openEditNasabahModal(event, '${nasabahId}')" title="Edit data nasabah">✏️</button>
-                    <button class="btn-delete-card" onclick="konfirmasiHapusNasabah(event, '${nasabahId}', '${item.nasabah?.nama_nasabah || 'Nasabah'}', '${item.nasabah?.no_pk || ''}')" title="Hapus nasabah ini">🗑️</button>
+                    <button class="btn-delete-card" onclick="konfirmasiHapusJaminan(event, '${item.id}', '${item.merk_kendaraan} ${item.tipe_kendaraan}', '${item.nasabah?.nama_nasabah || 'Nasabah'}', '${item.nasabah?.no_pk || ''}', '${nasabahId}')" title="Hapus jaminan ini">🗑️</button>
                 </div>
             `;
 
@@ -2071,7 +2071,7 @@ document.getElementById("btn-close-edit-modal").onclick = () => modalEditNasabah
 document.getElementById("btn-cancel-edit").onclick = () => modalEditNasabah.classList.remove("active");
 
 window.openEditNasabahModal = async function(event, nasabahId) {
-    event.stopPropagation();
+    if (event) event.stopPropagation();
     try {
         const { data: nasabah, error: nErr } = await supabaseClient
             .from("nasabah").select("*").eq("id", nasabahId).single();
@@ -2101,6 +2101,9 @@ window.openEditNasabahModal = async function(event, nasabahId) {
             box.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                     <strong style="font-size:13px; color:var(--primary);">Kendaraan ${idx + 1}</strong>
+                    <button type="button" class="btn btn-danger" style="padding: 4px 8px; font-size: 11px; display: flex; align-items: center; gap: 4px; background-color: var(--danger);" onclick="hapusJaminanDariEditModal(event, '${j.id}', '${j.merk_kendaraan} ${j.tipe_kendaraan}', '${nasabahId}')">
+                        🗑️ Hapus Kendaraan
+                    </button>
                 </div>
                 <div class="grid-3">
                     <div class="form-group">
@@ -2235,6 +2238,85 @@ async function populateMarketingDropdowns(selectedValue = "") {
         console.error("Gagal mengambil daftar marketing:", err);
     }
 }
+
+// ==========================================
+// HAPUS SATU JAMINAN (KENDARAAN)
+// ==========================================
+window.konfirmasiHapusJaminan = async function(event, jaminanId, merkTipe, namaNasabah, noPk, nasabahId) {
+    event.stopPropagation();
+    if (!jaminanId || jaminanId === 'null') return;
+    
+    try {
+        // Cek berapa jumlah jaminan yang dimiliki nasabah ini
+        const { data: listJaminan, error } = await supabaseClient
+            .from('jaminan_polis')
+            .select('id')
+            .eq('nasabah_id', nasabahId);
+        
+        if (error) throw error;
+        
+        const count = listJaminan ? listJaminan.length : 0;
+        
+        if (count <= 1) {
+            // Jika tinggal 1 jaminan, harus menghapus seluruh nasabah
+            if (confirm(`🗑️ Hapus Jaminan?\n\n"${merkTipe}" adalah satu-satunya jaminan untuk Nasabah "${namaNasabah}" (No PK: ${noPk}).\n\nMenghapus jaminan ini akan otomatis menghapus data Nasabah tersebut secara PERMANEN.\n\nLanjutkan hapus seluruh data nasabah?`)) {
+                await hapusNasabahById(nasabahId, namaNasabah);
+            }
+        } else {
+            // Jika lebih dari 1 jaminan, hapus jaminan ini saja
+            if (confirm(`🗑️ Hapus Jaminan?\n\nApakah Anda yakin ingin menghapus jaminan "${merkTipe}" saja?\n\nData Nasabah "${namaNasabah}" dan jaminan lainnya di bawah PK: ${noPk} akan tetap disimpan.\n\nLanjutkan?`)) {
+                const { error: delErr } = await supabaseClient
+                    .from('jaminan_polis')
+                    .delete()
+                    .eq('id', jaminanId);
+                if (delErr) throw delErr;
+                
+                alert(`✅ Jaminan "${merkTipe}" berhasil dihapus.`);
+                fetchDataAdmin(); // Refresh dashboard
+            }
+        }
+    } catch (err) {
+        alert('Gagal menghapus jaminan: ' + err.message);
+    }
+};
+
+window.hapusJaminanDariEditModal = async function(event, jaminanId, merkTipe, nasabahId) {
+    if (event) event.stopPropagation();
+    if (!jaminanId) return;
+
+    try {
+        // Cek berapa jumlah jaminan yang dimiliki nasabah ini
+        const { data: listJaminan, error } = await supabaseClient
+            .from('jaminan_polis')
+            .select('id')
+            .eq('nasabah_id', nasabahId);
+        
+        if (error) throw error;
+        
+        const count = listJaminan ? listJaminan.length : 0;
+        
+        if (count <= 1) {
+            alert(`⚠️ Ini adalah satu-satunya kendaraan untuk nasabah ini.\n\nUntuk menghapusnya, silakan tutup modal ini dan gunakan tombol hapus (🗑️) di dashboard utama untuk menghapus seluruh data nasabah.`);
+            return;
+        }
+
+        if (confirm(`🗑️ Hapus Kendaraan?\n\nApakah Anda yakin ingin menghapus kendaraan "${merkTipe}" dari nasabah ini?\n\nKendaraan lainnya tidak akan terpengaruh.`)) {
+            const { error: delErr } = await supabaseClient
+                .from('jaminan_polis')
+                .delete()
+                .eq('id', jaminanId);
+            if (delErr) throw delErr;
+
+            alert(`✅ Kendaraan "${merkTipe}" berhasil dihapus.`);
+            
+            // Reload daftar kendaraan di dalam modal edit
+            await window.openEditNasabahModal(null, nasabahId);
+            fetchDataAdmin(); // Refresh dashboard utama juga
+        }
+    } catch (err) {
+        alert('Gagal menghapus kendaraan: ' + err.message);
+    }
+};
 
 
 
