@@ -1658,6 +1658,13 @@ function setupExcelImport() {
             let lastNasabahId = null;
 
             try {
+                // Ambil daftar user lapangan untuk matching nama marketing
+                const { data: userList } = await supabaseClient
+                    .from("pengguna")
+                    .select("username")
+                    .eq("role", "lapangan");
+                const usernameList = (userList || []).map(u => u.username);
+
                 for (let i = 0; i < parsedExcelData.length; i++) {
                     const row = parsedExcelData[i];
                     let nasabahId = null;
@@ -1675,11 +1682,14 @@ function setupExcelImport() {
                         if (existing) {
                             nasabahId = existing.id;
                         } else {
+                            // Resolve nama marketing dari Excel ke nama lengkap di database
+                            const resolvedMarketing = matchMarketing(row.nama_marketing, usernameList);
+
                             const { data: inserted, error: insErr } = await supabaseClient
                                 .from("nasabah")
                                 .insert([{
                                     nama_nasabah: row.nama_nasabah,
-                                    nama_marketing: row.nama_marketing,
+                                    nama_marketing: resolvedMarketing,
                                     no_pk: row.no_pk,
                                     plafond: row.plafond,
                                     jangka_waktu: row.jangka_waktu,
@@ -1949,7 +1959,7 @@ function parseExcelSheet(workbook) {
 
             nasabahData = {
                 nama_nasabah: rawNama,
-                nama_marketing: colIndices.marketing !== -1 ? String(row[colIndices.marketing] || "").trim() : "Admin",
+                nama_marketing: colIndices.marketing !== -1 ? String(row[colIndices.marketing] || "").trim() : "",
                 no_pk: rawNoPk,
                 plafond: plafond,
                 jangka_waktu: jangka_waktu,
@@ -2390,6 +2400,73 @@ window.hapusJaminanDariEditModal = async function(event, jaminanId, merkTipe, na
         alert('Gagal menghapus kendaraan: ' + err.message);
     }
 };
+
+// ==========================================
+// PENCOCOKAN NAMA MARKETING DARI EXCEL
+// ==========================================
+/**
+ * Mencocokkan nama marketing dari Excel ke nama lengkap yang ada di database.
+ * 
+ * Logika:
+ * 1. Jika nama dari Excel kosong -> kembalikan "Admin"
+ * 2. Coba cari kecocokan persis (case-insensitive)
+ * 3. Coba cari user yang namanya MENGANDUNG semua kata dari nama Excel (partial match)
+ * 4. Coba cari user yang namanya DIAWALI dengan kata pertama dari nama Excel
+ * 5. Jika tidak ada yang cocok -> gunakan nama dari Excel apa adanya (fallback)
+ * 
+ * Contoh:
+ *   Excel: "sendi lambang" -> DB: "sendi lambang nuryadin" ✅
+ *   Excel: "SENDI" -> DB: "sendi lambang nuryadin" ✅
+ *   Excel: "albram" -> DB: "albram rahardiansyah" ✅
+ */
+function matchMarketing(excelName, usernameList) {
+    if (!excelName || excelName.trim() === "") return "Admin";
+    
+    const namaBersih = excelName.trim().toLowerCase();
+    const kataExcel = namaBersih.split(/\s+/).filter(k => k.length > 1); // minimal 2 karakter
+    
+    // Langkah 1: Coba kecocokan PERSIS (case-insensitive)
+    const exactMatch = usernameList.find(u => u.toLowerCase() === namaBersih);
+    if (exactMatch) return exactMatch;
+    
+    // Langkah 2: Semua kata dari Excel ada dalam nama DB (partial match ketat)
+    // Contoh: "sendi lambang" cocok ke "sendi lambang nuryadin"
+    if (kataExcel.length > 0) {
+        const partialMatch = usernameList.find(u => {
+            const namaDb = u.toLowerCase();
+            return kataExcel.every(kata => namaDb.includes(kata));
+        });
+        if (partialMatch) return partialMatch;
+    }
+    
+    // Langkah 3: Nama DB diawali dengan nama dari Excel
+    // Contoh: "sendi" cocok ke "sendi lambang nuryadin"
+    const startsWithMatch = usernameList.find(u => 
+        u.toLowerCase().startsWith(namaBersih)
+    );
+    if (startsWithMatch) return startsWithMatch;
+    
+    // Langkah 4: Nama Excel diawali dengan nama DB (kebalikan)
+    // Untuk antisipasi jika nama di Excel malah lebih panjang
+    const reverseMatch = usernameList.find(u => 
+        namaBersih.startsWith(u.toLowerCase())
+    );
+    if (reverseMatch) return reverseMatch;
+    
+    // Langkah 5: Cari berdasarkan kata pertama saja
+    // Contoh: "sendi x" masih bisa cocok ke "sendi lambang nuryadin"
+    if (kataExcel.length > 0) {
+        const firstWordMatch = usernameList.find(u => 
+            u.toLowerCase().startsWith(kataExcel[0])
+        );
+        if (firstWordMatch) return firstWordMatch;
+    }
+    
+    // Fallback: gunakan nama dari Excel apa adanya
+    console.warn(`matchMarketing: Tidak ada user yang cocok untuk "${excelName}", disimpan apa adanya.`);
+    return excelName.trim();
+}
+
 
 
 
