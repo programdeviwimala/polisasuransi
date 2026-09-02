@@ -804,7 +804,11 @@ async function openDetailModal(item) {
             actLapanganDone.style.display = "block";
             
             // Reset input file & foto preview
-            document.getElementById("input-camera-foto").value = "";
+            const inputCam = document.getElementById("input-camera-foto");
+            if (inputCam) inputCam.value = "";
+            const inputGal = document.getElementById("input-gallery-foto");
+            if (inputGal) inputGal.value = "";
+            base64FotoBukti = null;
             const imgPreview = document.getElementById("preview-foto-bukti");
             imgPreview.src = "";
             imgPreview.style.display = "none";
@@ -905,25 +909,52 @@ document.getElementById("btn-admin-submit-assign").addEventListener("click", asy
 // Penanganan Unggah Foto Bukti
 const cameraClickBox = document.getElementById("camera-click-box");
 const inputCameraFoto = document.getElementById("input-camera-foto");
+const inputGalleryFoto = document.getElementById("input-gallery-foto");
+const btnTriggerCamera = document.getElementById("btn-trigger-camera");
+const btnTriggerGallery = document.getElementById("btn-trigger-gallery");
 const previewFotoBukti = document.getElementById("preview-foto-bukti");
 let base64FotoBukti = null;
 
-cameraClickBox.addEventListener("click", (e) => {
-    if (e.target !== inputCameraFoto) {
-        inputCameraFoto.click();
-    }
-});
+function handleSelectedImageFile(file) {
+    if (!file) return;
+    compressImage(file, (base64Result) => {
+        base64FotoBukti = base64Result;
+        previewFotoBukti.src = base64Result;
+        previewFotoBukti.style.display = "block";
+    });
+}
 
-inputCameraFoto.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        compressImage(file, (base64Result) => {
-            base64FotoBukti = base64Result;
-            previewFotoBukti.src = base64Result;
-            previewFotoBukti.style.display = "block";
-        });
-    }
-});
+if (cameraClickBox && inputCameraFoto) {
+    cameraClickBox.addEventListener("click", (e) => {
+        if (e.target !== inputCameraFoto) {
+            inputCameraFoto.click();
+        }
+    });
+}
+
+if (btnTriggerCamera && inputCameraFoto) {
+    btnTriggerCamera.addEventListener("click", () => {
+        inputCameraFoto.click();
+    });
+}
+
+if (btnTriggerGallery && inputGalleryFoto) {
+    btnTriggerGallery.addEventListener("click", () => {
+        inputGalleryFoto.click();
+    });
+}
+
+if (inputCameraFoto) {
+    inputCameraFoto.addEventListener("change", (e) => {
+        handleSelectedImageFile(e.target.files[0]);
+    });
+}
+
+if (inputGalleryFoto) {
+    inputGalleryFoto.addEventListener("change", (e) => {
+        handleSelectedImageFile(e.target.files[0]);
+    });
+}
 
 // AKSI LAPANGAN: Selesaikan Pengantaran (Pengantaran -> Selesai)
 document.getElementById("btn-lapangan-submit-done").addEventListener("click", async () => {

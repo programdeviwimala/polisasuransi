@@ -524,11 +524,16 @@
                             <!-- Foto Bukti Penyerahan -->
                             <div class="form-group">
                                 <label>Ambil Foto Bukti Tanda Terima (Nasabah memegang polis/surat)</label>
-                                <div class="camera-container" id="camera-click-box">
+                                <div class="camera-container" id="camera-click-box" style="margin-bottom: 8px;">
                                     <div class="camera-icon">📷</div>
-                                    <span>Klik untuk Buka Kamera / Pilih Foto</span>
-                                    <input type="file" id="input-camera-foto" accept="image/*">
+                                    <span style="font-weight: 600; color: var(--primary);">Klik untuk Ambil Foto Langsung (Kamera)</span>
+                                    <input type="file" id="input-camera-foto" accept="image/*" capture="environment">
                                     <img id="preview-foto-bukti" class="camera-preview" src="" alt="Preview Bukti">
+                                </div>
+                                <div style="display: flex; gap: 8px; margin-bottom: 16px;">
+                                    <button type="button" class="btn btn-secondary" id="btn-trigger-camera" style="flex: 1; font-size: 12px; padding: 9px; display: flex; align-items: center; justify-content: center; gap: 6px;">📸 Buka Kamera Langsung</button>
+                                    <button type="button" class="btn btn-secondary" id="btn-trigger-gallery" style="flex: 1; font-size: 12px; padding: 9px; display: flex; align-items: center; justify-content: center; gap: 6px;">📁 Pilih dari Galeri</button>
+                                    <input type="file" id="input-gallery-foto" accept="image/*" style="display: none;">
                                 </div>
                             </div>
 
