@@ -755,10 +755,16 @@ async function openDetailModal(item) {
     actLapanganDone.style.display = "none";
     actCompletedInfo.style.display = "none";
     
-    // Reset panel cetak
+    // Reset panel cetak & download
     printPanel.style.display = "none";
     btnPrintPetugas.style.display = "none";
     btnPrintNasabah.style.display = "none";
+    const btnKirimWa = document.getElementById("btn-kirim-wa");
+    if (btnKirimWa) btnKirimWa.style.display = "none";
+    const btnDownloadExcel = document.getElementById("btn-download-excel-single");
+    if (btnDownloadExcel) btnDownloadExcel.style.display = "none";
+    const btnOpenWebReceipt = document.getElementById("btn-open-web-receipt");
+    if (btnOpenWebReceipt) btnOpenWebReceipt.style.display = "none";
 
     if (item.status === "Menunggu Polis") {
         if (currentUser.role === "admin") {
@@ -821,12 +827,13 @@ async function openDetailModal(item) {
         document.getElementById("img-ttd-nasabah").src = item.ttd_nasabah || "";
         document.getElementById("img-foto-bukti").src = item.foto_bukti || "";
         
-        // Menu cetak tanda terima petugas & nasabah tersedia
+        // Menu cetak & download laporan tanda terima lengkap tersedia
         printPanel.style.display = "block";
         btnPrintPetugas.style.display = "block";
         btnPrintNasabah.style.display = "block";
-        const btnKirimWa = document.getElementById("btn-kirim-wa");
         if (btnKirimWa) btnKirimWa.style.display = "block";
+        if (btnDownloadExcel) btnDownloadExcel.style.display = "block";
+        if (btnOpenWebReceipt) btnOpenWebReceipt.style.display = "block";
     }
 
     modalDetail.classList.add("active");
@@ -1088,6 +1095,8 @@ function setupPrintButtons() {
     const btnPrintPetugas = document.getElementById("btn-print-ttd-petugas");
     const btnPrintNasabah = document.getElementById("btn-print-ttd-nasabah");
     const btnKirimWa = document.getElementById("btn-kirim-wa");
+    const btnDownloadExcel = document.getElementById("btn-download-excel-single");
+    const btnOpenWebReceipt = document.getElementById("btn-open-web-receipt");
 
     if (btnPrintPetugas) {
         btnPrintPetugas.addEventListener("click", () => {
@@ -1103,12 +1112,79 @@ function setupPrintButtons() {
         });
     }
 
+    if (btnDownloadExcel) {
+        btnDownloadExcel.addEventListener("click", async () => {
+            if (!currentModalItem) return;
+            await downloadLaporanSingle(currentModalItem);
+        });
+    }
+
+    if (btnOpenWebReceipt) {
+        btnOpenWebReceipt.addEventListener("click", () => {
+            if (!currentModalItem) return;
+            const url = `https://programdeviwimala.github.io/polisasuransi/tanda_terima.html?id=${currentModalItem.id}`;
+            window.open(url, "_blank");
+        });
+    }
+
     if (btnKirimWa) {
         btnKirimWa.addEventListener("click", async () => {
             if (!currentModalItem) return;
             await kirimWhatsApp(currentModalItem);
         });
     }
+}
+
+async function downloadLaporanSingle(item) {
+    const nasabah = item.nasabah || {};
+    
+    // Ambil semua jaminan untuk nasabah ini jika ada multi-jaminan
+    let allJaminan = [item];
+    try {
+        const { data } = await supabaseClient
+            .from("jaminan_polis")
+            .select("*")
+            .eq("nasabah_id", item.nasabah_id);
+        if (data && data.length > 0) allJaminan = data;
+    } catch (err) {
+        console.error("Gagal mengambil data jaminan untuk export Excel:", err);
+    }
+
+    const excelData = allJaminan.map((j, index) => {
+        return {
+            "No": index + 1,
+            "No PK": nasabah.no_pk || "-",
+            "Nama Nasabah": nasabah.nama_nasabah || "-",
+            "Nama Marketing": nasabah.nama_marketing || "-",
+            "Keterangan": nasabah.keterangan || "-",
+            "Merk Kendaraan": j.merk_kendaraan || "-",
+            "Tipe Kendaraan": j.tipe_kendaraan || "-",
+            "Tahun": j.tahun_kendaraan || "-",
+            "Harga Taksasi": j.harga_taksasi || 0,
+            "Asuransi": j.asuransi_pilihan || "-",
+            "No Polis": j.no_polis || "-",
+            "Status": j.status || "-",
+            "Petugas Lapangan": j.petugas_lapangan || "-",
+            "Admin Penyerah": j.admin_penyerah || "-",
+            "Tanggal Penyelesaian": j.updated_at ? new Date(j.updated_at).toLocaleString('id-ID') : "-"
+        };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const wscols = [
+        {wch: 5}, {wch: 22}, {wch: 30}, {wch: 20}, {wch: 15},
+        {wch: 18}, {wch: 20}, {wch: 8}, {wch: 16}, {wch: 15},
+        {wch: 22}, {wch: 30}, {wch: 20}, {wch: 20}, {wch: 24}
+    ];
+    worksheet['!cols'] = wscols;
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Selesai");
+
+    const safeName = (nasabah.nama_nasabah || "Nasabah").replace(/[^a-zA-Z0-9]/g, "_");
+    const safePk = (nasabah.no_pk || "PK").replace(/[^a-zA-Z0-9]/g, "_");
+    const fileName = `Laporan_Selesai_${safeName}_${safePk}_${Date.now()}.xlsx`;
+    XLSX.writeFile(workbook, fileName);
 }
 
 function formatTanggal(dateStr) {

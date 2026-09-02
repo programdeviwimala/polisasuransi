@@ -562,13 +562,19 @@
 
                     </div>
 
-                    <!-- Panel Cetak Tanda Terima (Khusus Admin/Petugas jika status sesuai) -->
+                    <!-- Panel Cetak & Download Dokumen / Laporan Tanda Terima -->
                     <div class="detail-section" id="print-panel" style="display: none; margin-top: 15px; background: #f0fdf4; padding: 16px; border-radius: var(--radius-sm); border: 1px solid #bbf7d0;">
-                        <h4 style="color: var(--success); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">🖨️ Cetak Dokumen Tanda Terima</h4>
-                        <div style="display:flex; gap:12px;">
-                            <button class="btn btn-secondary" id="btn-print-ttd-petugas" style="flex:1;">Cetak Tanda Terima Petugas</button>
-                            <button class="btn btn-primary" id="btn-print-ttd-nasabah" style="flex:1;">Cetak Tanda Terima Nasabah</button>
-                            <button id="btn-kirim-wa" class="btn" style="flex:1; background:#25D366; color:white;">💬 Kirim Teks WA</button>
+                        <h4 style="color: var(--success); margin-bottom: 12px; display: flex; align-items: center; gap: 6px;">📄 Dokumen & Laporan Tanda Terima</h4>
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button class="btn btn-secondary" id="btn-print-ttd-petugas" style="flex: 1; min-width: 160px; font-size: 13px;">🖨️ Cetak Tanda Terima Petugas</button>
+                                <button class="btn btn-primary" id="btn-print-ttd-nasabah" style="flex: 1; min-width: 160px; font-size: 13px;">📥 Download / Cetak PDF Nasabah</button>
+                            </div>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                <button id="btn-download-excel-single" class="btn" style="flex: 1; min-width: 160px; background: #059669; color: white; font-size: 13px;">📊 Download Laporan (Excel)</button>
+                                <button id="btn-open-web-receipt" class="btn" style="flex: 1; min-width: 160px; background: #3b82f6; color: white; font-size: 13px;">🌐 Buka Tanda Terima Online</button>
+                                <button id="btn-kirim-wa" class="btn" style="flex: 1; min-width: 160px; background: #25D366; color: white; font-size: 13px;">💬 Kirim Teks WA</button>
+                            </div>
                         </div>
                     </div>
                 </div>
