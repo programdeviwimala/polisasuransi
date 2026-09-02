@@ -1483,17 +1483,30 @@ async function printTandaTerima(jenis, item) {
 // ==========================================
 async function kirimWhatsApp(item) {
     const nasabah = item.nasabah || {};
-    const nomorWa = prompt("Masukkan nomor WhatsApp Nasabah (tanpa tanda + atau 0, awali dengan 62):\nContoh: 628123456789", "62");
-    if (!nomorWa || nomorWa.trim().length < 10) return;
+    const inputNomor = prompt("Masukkan nomor WhatsApp Nasabah:\n(Bisa diawali 08, 62, atau nomor biasa)", "");
+    if (!inputNomor) return;
+
+    // Bersihkan nomor dari spasi, strip, tanda tambah
+    let phone = inputNomor.replace(/[^0-9]/g, "");
+    if (phone.startsWith("0")) {
+        phone = "62" + phone.substring(1);
+    } else if (phone.startsWith("8")) {
+        phone = "62" + phone;
+    }
+
+    if (phone.length < 9) {
+        alert("Nomor WhatsApp tidak valid. Harap masukkan nomor dengan benar.");
+        return;
+    }
 
     // Ambil semua jaminan nasabah
-    let allJaminan = [];
+    let allJaminan = [item];
     try {
         const { data } = await supabaseClient
             .from("jaminan_polis")
             .select("*")
             .eq("nasabah_id", item.nasabah_id);
-        if (data) allJaminan = data;
+        if (data && data.length > 0) allJaminan = data;
     } catch (err) { /* skip */ }
 
     const tanggal = new Date().toLocaleDateString("id-ID", { day: 'numeric', month: 'long', year: 'numeric' });
@@ -1521,8 +1534,16 @@ ${publicReceiptUrl}
 
 _BPR Cahaya Fajar Jatiwangi_`;
 
-    const url = `https://wa.me/${nomorWa.trim()}?text=${encodeURIComponent(pesan)}`;
-    window.open(url, '_blank');
+    const encodedPesan = encodeURIComponent(pesan);
+    const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+
+    if (isMobile) {
+        // Langsung buka aplikasi WhatsApp di perangkat HP tanpa halaman perantara
+        window.location.href = `whatsapp://send?phone=${phone}&text=${encodedPesan}`;
+    } else {
+        // Buka WhatsApp Web / Desktop di komputer
+        window.open(`https://wa.me/${phone}?text=${encodedPesan}`, '_blank');
+    }
 }
 
 // ==========================================
