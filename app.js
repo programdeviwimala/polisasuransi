@@ -7,6 +7,97 @@ let currentUser = null;
 let currentSelectedJobId = null;
 let selectedNasabahIds = []; // Untuk hapus massal
 
+// ==========================================
+// PELACAK STATUS CETAK & SHARE (MENCEGAH CETAK DOUBLE)
+// ==========================================
+const PRINT_TRACKER_KEY = "polis_print_share_tracker";
+
+function getPrintTracker() {
+    try {
+        const raw = localStorage.getItem(PRINT_TRACKER_KEY);
+        return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function savePrintTracker(tracker) {
+    try {
+        localStorage.setItem(PRINT_TRACKER_KEY, JSON.stringify(tracker));
+    } catch (e) {
+        console.error("Gagal simpan tracker cetak:", e);
+    }
+}
+
+function getItemPrintStatus(itemId) {
+    if (!itemId) return { printed: false, shared: false };
+    const tracker = getPrintTracker();
+    return tracker[itemId] || { printed: false, shared: false };
+}
+
+function markItemAsPrinted(itemId, jenis = "Cetak") {
+    if (!itemId) return;
+    const tracker = getPrintTracker();
+    const existing = tracker[itemId] || {};
+    tracker[itemId] = {
+        ...existing,
+        printed: true,
+        print_type: jenis,
+        last_printed_at: new Date().toISOString()
+    };
+    savePrintTracker(tracker);
+    refreshPrintStatusUI(itemId);
+}
+
+function markItemAsShared(itemId) {
+    if (!itemId) return;
+    const tracker = getPrintTracker();
+    const existing = tracker[itemId] || {};
+    tracker[itemId] = {
+        ...existing,
+        shared: true,
+        last_shared_at: new Date().toISOString()
+    };
+    savePrintTracker(tracker);
+    refreshPrintStatusUI(itemId);
+}
+
+function refreshPrintStatusUI(itemId) {
+    if (typeof currentModalItem !== "undefined" && currentModalItem && currentModalItem.id === itemId) {
+        updatePrintBannerInModal(currentModalItem);
+    }
+    if (currentUser) {
+        if (currentUser.role === 'admin') fetchDataAdmin();
+        else if (currentUser.role === 'lapangan') fetchDataLapangan();
+    }
+}
+
+function updatePrintBannerInModal(item) {
+    const banner = document.getElementById("print-status-banner");
+    if (!banner || !item) return;
+
+    const status = getItemPrintStatus(item.id);
+    if (status.printed || status.shared) {
+        banner.style.display = "block";
+        let textParts = [];
+        if (status.printed) {
+            const timePrinted = formatTanggal(status.last_printed_at);
+            textParts.push(`🖨️ <strong>Sudah Dicetak:</strong> ${status.print_type || 'Dokumen'} (${timePrinted})`);
+        }
+        if (status.shared) {
+            const timeShared = formatTanggal(status.last_shared_at);
+            textParts.push(`💬 <strong>Sudah Dishare WA:</strong> ${timeShared}`);
+        }
+        banner.innerHTML = textParts.join("<br>");
+        banner.style.background = "#f0f9ff";
+        banner.style.borderColor = "#bae6fd";
+        banner.style.color = "#0369a1";
+    } else {
+        banner.style.display = "none";
+    }
+}
+
+
 // Inisialisasi Klien supabaseClient
 if (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== "URL_SUPABASE_ANDA_DI_SINI") {
     supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -405,6 +496,16 @@ async function fetchDataAdmin() {
                 tagClass = "tag-done";
             }
 
+            const printInfo = getItemPrintStatus(item.id);
+            let printBadgeHtml = "";
+            if (printInfo.printed && printInfo.shared) {
+                printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0; margin-top:4px;">🖨️ Dicetak & 💬 Dishare</span>`;
+            } else if (printInfo.printed) {
+                printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#1e40af; background:#dbeafe; padding:2px 6px; border-radius:4px; border:1px solid #bfdbfe; margin-top:4px;">🖨️ Sudah Dicetak</span>`;
+            } else if (printInfo.shared) {
+                printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0; margin-top:4px;">💬 Sudah Di-share WA</span>`;
+            }
+
             card.innerHTML = `
                 <div class="card-delete-overlay">
                     <input type="checkbox" class="card-checkbox" data-nasabah-id="${nasabahId}" onclick="toggleNasabahSelect(event, '${nasabahId}')">
@@ -416,6 +517,7 @@ async function fetchDataAdmin() {
                     <span>📄 PK: ${item.nasabah ? item.nasabah.no_pk : '-'}</span>
                     <span>🏢 Asuransi: ${item.asuransi_pilihan}</span>
                     ${item.petugas_lapangan ? `<span>👤 Kurir: ${item.petugas_lapangan}</span>` : ''}
+                    ${printBadgeHtml ? `<div>${printBadgeHtml}</div>` : ''}
                 </div>
                 <div style="display:flex; gap:6px; position:absolute; bottom:12px; right:12px;">
                     <button class="btn-edit-card" onclick="openEditNasabahModal(event, '${nasabahId}')" title="Edit data nasabah">✏️</button>
@@ -706,6 +808,16 @@ async function fetchDataLapangan() {
                 tagClass = "tag-done";
             }
 
+            const printInfo = getItemPrintStatus(job.id);
+            let printBadgeHtml = "";
+            if (printInfo.printed && printInfo.shared) {
+                printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0; margin-top:4px;">🖨️ Dicetak & 💬 Dishare</span>`;
+            } else if (printInfo.printed) {
+                printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#1e40af; background:#dbeafe; padding:2px 6px; border-radius:4px; border:1px solid #bfdbfe; margin-top:4px;">🖨️ Sudah Dicetak</span>`;
+            } else if (printInfo.shared) {
+                printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0; margin-top:4px;">💬 Sudah Di-share WA</span>`;
+            }
+
             card.innerHTML = `
                 <span class="card-tag ${tagClass}">${job.status}</span>
                 <div class="card-title">${job.nasabah ? job.nasabah.nama_nasabah : 'Tanpa Nama'}</div>
@@ -713,6 +825,7 @@ async function fetchDataLapangan() {
                     <span>🚗 <strong>${job.merk_kendaraan} ${job.tipe_kendaraan}</strong></span>
                     <span>🏢 Asuransi: ${job.asuransi_pilihan}</span>
                     <span>📄 No Polis: ${job.no_polis || '-'}</span>
+                    ${printBadgeHtml ? `<div>${printBadgeHtml}</div>` : ''}
                 </div>
             `;
             listContainer.appendChild(card);
@@ -836,6 +949,9 @@ async function openDetailModal(item) {
         if (btnDownloadPdf) btnDownloadPdf.style.display = "block";
         if (btnKirimWa) btnKirimWa.style.display = "block";
     }
+
+    // Perbarui status banner cetak/share
+    updatePrintBannerInModal(item);
 
     modalDetail.classList.add("active");
 }
@@ -1174,6 +1290,14 @@ async function getBase64ImageFromUrl(imageUrl) {
 }
 
 async function downloadPDFNasabah(item) {
+    const status = getItemPrintStatus(item.id);
+    if (status.printed) {
+        const nasabahNama = item.nasabah?.nama_nasabah || "Nasabah";
+        const timeStr = formatTanggal(status.last_printed_at);
+        const proceed = confirm(`⚠️ PERINGATAN CETAK/DOWNLOAD ULANG:\n\nPolis atas nama "${nasabahNama}" SUDAH PERNAH dicetak/didownload sebelumnya (${status.print_type || 'Dokumen'} pada ${timeStr}).\n\nApakah Anda yakin ingin mendownload ulang PDF?`);
+        if (!proceed) return;
+    }
+
     const btn = document.getElementById("btn-download-pdf-nasabah");
     const originalText = btn ? btn.innerHTML : "";
     if (btn) {
@@ -1321,6 +1445,9 @@ async function downloadPDFNasabah(item) {
         };
 
         await html2pdf().set(opt).from(container).save();
+
+        // Tandai sebagai sudah dicetak/didownload
+        markItemAsPrinted(item.id, "Download PDF Nasabah");
     } catch (err) {
         console.error("Gagal mendownload PDF:", err);
         alert("Gagal mendownload PDF: " + err.message);
@@ -1349,6 +1476,14 @@ async function printTandaTerima(jenis, item) {
     if (!printArea) return;
 
     const nasabah = item.nasabah || {};
+    const status = getItemPrintStatus(item.id);
+    if (status.printed) {
+        const nasabahNama = nasabah.nama_nasabah || "Nasabah";
+        const timeStr = formatTanggal(status.last_printed_at);
+        const proceed = confirm(`⚠️ PERINGATAN CETAK ULANG:\n\nPolis atas nama "${nasabahNama}" SUDAH PERNAH dicetak sebelumnya (${status.print_type || 'Dokumen'} pada ${timeStr}).\n\nApakah Anda yakin ingin mencetak ulang?`);
+        if (!proceed) return;
+    }
+
     const tanggalCetak = new Date().toLocaleDateString("id-ID", {
         day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit"
     });
@@ -1507,6 +1642,9 @@ async function printTandaTerima(jenis, item) {
 
     // Jalankan dialog print browser
     window.print();
+
+    // Tandai polis sebagai sudah dicetak
+    markItemAsPrinted(item.id, jenis === "petugas" ? "Cetak Tanda Terima Petugas" : "Cetak Tanda Terima Nasabah");
 }
 
 // ==========================================
@@ -1514,6 +1652,14 @@ async function printTandaTerima(jenis, item) {
 // ==========================================
 async function kirimWhatsApp(item) {
     const nasabah = item.nasabah || {};
+    const status = getItemPrintStatus(item.id);
+    if (status.shared) {
+        const nasabahNama = nasabah.nama_nasabah || "Nasabah";
+        const timeStr = formatTanggal(status.last_shared_at);
+        const proceed = confirm(`⚠️ PERINGATAN SHARE ULANG:\n\nTanda terima untuk nasabah "${nasabahNama}" SUDAH PERNAH dikirim via WhatsApp pada ${timeStr}.\n\nApakah Anda ingin mengirim ulang pesan WA?`);
+        if (!proceed) return;
+    }
+
     const inputNomor = prompt("Masukkan nomor WhatsApp Nasabah:\n(Bisa diawali 08, 62, atau nomor biasa)", "");
     if (!inputNomor) return;
 
@@ -1567,6 +1713,9 @@ _BPR Cahaya Fajar Jatiwangi_`;
 
     const encodedPesan = encodeURIComponent(pesan);
     const isMobile = /Android|iPhone|iPad|iPod|Windows Phone/i.test(navigator.userAgent);
+
+    // Tandai sebagai sudah dishare
+    markItemAsShared(item.id);
 
     if (isMobile) {
         // Langsung buka aplikasi WhatsApp di perangkat HP tanpa halaman perantara
@@ -2310,6 +2459,16 @@ function renderLaporanTable() {
             statusBadge = '<span class="status-badge" style="background:#bbf7d0; color:#166534;">✅ Selesai</span>';
         }
 
+        const printInfo = getItemPrintStatus(item.id);
+        let printBadge = '';
+        if (printInfo.printed && printInfo.shared) {
+            printBadge = '<div style="margin-top:4px;"><span style="font-size:10px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 5px; border-radius:3px; border:1px solid #a7f3d0;">🖨️ Cetak & 💬 WA</span></div>';
+        } else if (printInfo.printed) {
+            printBadge = '<div style="margin-top:4px;"><span style="font-size:10px; font-weight:600; color:#1e40af; background:#dbeafe; padding:2px 5px; border-radius:3px; border:1px solid #bfdbfe;">🖨️ Sudah Cetak</span></div>';
+        } else if (printInfo.shared) {
+            printBadge = '<div style="margin-top:4px;"><span style="font-size:10px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 5px; border-radius:3px; border:1px solid #a7f3d0;">💬 Sudah WA</span></div>';
+        }
+
         tr.innerHTML = `
             <td style="text-align: center;">${index + 1}</td>
             <td><strong>${nasabah.no_pk || '-'}</strong></td>
@@ -2319,7 +2478,7 @@ function renderLaporanTable() {
             <td style="text-align: center;">${item.tahun_kendaraan || '-'}</td>
             <td>${item.asuransi_pilihan || '-'}</td>
             <td>${item.no_polis || '-'}</td>
-            <td>${statusBadge}</td>
+            <td>${statusBadge}${printBadge}</td>
             <td>${item.petugas_lapangan || '-'}</td>
             <td>${item.admin_penyerah || '-'}</td>
             <td style="font-size: 12px; color: #64748b;">${formatTanggal(item.updated_at)}</td>
