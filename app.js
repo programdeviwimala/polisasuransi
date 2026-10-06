@@ -1407,40 +1407,44 @@ async function downloadPDFNasabah(item) {
 
         // Buat container HTML khusus untuk PDF
         const container = document.createElement("div");
-        container.style.padding = "20px";
+        container.style.position = "fixed";
+        container.style.top = "0";
+        container.style.left = "-9999px";
+        container.style.width = "720px";
+        container.style.padding = "18px 24px";
         container.style.background = "#ffffff";
-        container.style.color = "#1e293b";
+        container.style.color = "#0f172a";
         container.style.fontFamily = "'Outfit', Arial, sans-serif";
-        container.style.maxWidth = "750px";
-        container.style.margin = "0 auto";
+        container.style.boxSizing = "border-box";
+        document.body.appendChild(container);
 
         container.innerHTML = `
-            <div style="text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 12px; margin-bottom: 16px;">
-                <h1 style="font-size: 18px; color: #1e3a8a; margin: 0 0 4px 0; text-transform: uppercase; font-weight: 700;">Tanda Terima Polis Asuransi</h1>
-                <p style="font-size: 12px; color: #64748b; margin: 0;">Bukti Penerimaan Polis oleh Nasabah</p>
+            <div style="text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 10px;">
+                <h1 style="font-size: 16px; color: #1e3a8a; margin: 0 0 2px 0; text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Tanda Terima Polis Asuransi</h1>
+                <p style="font-size: 11px; color: #64748b; margin: 0;">Bukti Penerimaan Polis oleh Nasabah</p>
             </div>
 
-            <div style="font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 8px; border-left: 3px solid #2563eb; padding-left: 8px;">
+            <div style="font-size: 12px; font-weight: 700; color: #1e293b; margin-bottom: 6px; border-left: 3px solid #2563eb; padding-left: 6px;">
                 Bukti Penerimaan Polis oleh Nasabah
             </div>
 
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 12px;">
-                <tr><td style="padding: 4px 0; width: 32%; color: #64748b;">Nama Nasabah</td><td style="padding: 4px 0; font-weight: 600;">: ${nasabah.nama_nasabah || "-"}</td></tr>
-                <tr><td style="padding: 4px 0; color: #64748b;">No. PK (Perjanjian Kredit)</td><td style="padding: 4px 0; font-weight: 600;">: ${nasabah.no_pk || "-"}</td></tr>
-                <tr><td style="padding: 4px 0; color: #64748b;">Tanggal Terima Nasabah</td><td style="padding: 4px 0; font-weight: 600;">: ${formatTanggal(item.updated_at)}</td></tr>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 11px;">
+                <tr><td style="padding: 2px 0; width: 30%; color: #64748b;">Nama Nasabah</td><td style="padding: 2px 0; font-weight: 600;">: ${nasabah.nama_nasabah || "-"}</td></tr>
+                <tr><td style="padding: 2px 0; color: #64748b;">No. PK (Perjanjian Kredit)</td><td style="padding: 2px 0; font-weight: 600;">: ${nasabah.no_pk || "-"}</td></tr>
+                <tr><td style="padding: 2px 0; color: #64748b;">Tanggal Terima Nasabah</td><td style="padding: 2px 0; font-weight: 600;">: ${formatTanggal(item.updated_at)}</td></tr>
             </table>
 
-            <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0;">Daftar Jaminan Kendaraan:</div>
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 16px; font-size: 11px;">
+            <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #475569; margin: 8px 0 4px 0;">Daftar Jaminan Kendaraan:</div>
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px;">
                 <thead>
                     <tr style="background: #f1f5f9; text-align: left;">
-                        <th style="border: 1px solid #cbd5e1; padding: 6px; text-align:center; width:5%;">No</th>
-                        <th style="border: 1px solid #cbd5e1; padding: 6px;">Merk</th>
-                        <th style="border: 1px solid #cbd5e1; padding: 6px;">Tipe</th>
-                        <th style="border: 1px solid #cbd5e1; padding: 6px; text-align:center; width:10%;">Tahun</th>
-                        <th style="border: 1px solid #cbd5e1; padding: 6px; text-align:right;">Harga Taksasi</th>
-                        <th style="border: 1px solid #cbd5e1; padding: 6px; text-align:center;">Asuransi</th>
-                        <th style="border: 1px solid #cbd5e1; padding: 6px;">No. Polis</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px; text-align:center; width:5%;">No</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px;">Merk</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px;">Tipe</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px; text-align:center; width:10%;">Tahun</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px; text-align:right;">Harga Taksasi</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px; text-align:center;">Asuransi</th>
+                        <th style="border: 1px solid #cbd5e1; padding: 5px;">No. Polis</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -1449,40 +1453,40 @@ async function downloadPDFNasabah(item) {
             </table>
 
             ${fotoBuktiBase64 ? `
-                <div style="margin-bottom:16px; text-align:center;">
-                    <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:#64748b; margin-bottom:6px;">Foto Bukti Tanda Terima (Nasabah Menerima Polis)</div>
-                    <img src="${fotoBuktiBase64}" alt="Foto Bukti" style="max-width:260px; max-height:160px; border:1px solid #e2e8f0; border-radius:6px; object-fit:contain;">
+                <div style="margin-bottom:12px; text-align:center;">
+                    <div style="font-size:10px; font-weight:600; text-transform:uppercase; color:#64748b; margin-bottom:4px;">Foto Bukti Tanda Terima (Nasabah Menerima Polis)</div>
+                    <img src="${fotoBuktiBase64}" alt="Foto Bukti" style="max-width:240px; max-height:125px; border:1px solid #e2e8f0; border-radius:6px; object-fit:contain; background:#f8fafc;">
                 </div>
             ` : ""}
 
-            <div style="margin-top: 15px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; text-align: center;">
+            <div style="margin-top: 10px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; text-align: center;">
                 <div>
-                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase;">Admin Kantor</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 4px;">(Tanda Tangan Manual)</div>
-                    <div style="height: 75px; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-style: italic; font-size: 10px;">Tanda Tangan</div>
-                    <div style="font-weight: 700; font-size: 11px; margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 4px;">${item.admin_penyerah || (currentUser ? currentUser.username : "Admin")}</div>
+                    <div style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Admin Kantor</div>
+                    <div style="font-size: 8.5px; color: #64748b; margin-bottom: 3px;">(Tanda Tangan Manual)</div>
+                    <div style="height: 60px; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-style: italic; font-size: 9.5px;">Tanda Tangan</div>
+                    <div style="font-weight: 700; font-size: 10px; margin-top: 4px; border-top: 1px solid #1e293b; padding-top: 3px;">${item.admin_penyerah || (currentUser ? currentUser.username : "Admin")}</div>
                 </div>
                 <div>
-                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase;">Petugas Lapangan</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 4px;">(Digital/Otomatis)</div>
+                    <div style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Petugas Lapangan</div>
+                    <div style="font-size: 8.5px; color: #64748b; margin-bottom: 3px;">(Digital/Otomatis)</div>
                     ${ttdPetugasBase64
-                        ? `<img src="${ttdPetugasBase64}" alt="TTD Petugas" style="width:100%; height:75px; object-fit:contain; border:1px solid #e2e8f0; border-radius:4px;">`
-                        : `<div style="height: 75px; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-style: italic; font-size: 10px;">Belum TTD</div>`
+                        ? `<img src="${ttdPetugasBase64}" alt="TTD Petugas" style="width:100%; height:60px; object-fit:contain; border:1px solid #e2e8f0; border-radius:4px;">`
+                        : `<div style="height: 60px; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-style: italic; font-size: 9.5px;">Belum TTD</div>`
                     }
-                    <div style="font-weight: 700; font-size: 11px; margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 4px;">${item.petugas_lapangan || "Petugas Lapangan"}</div>
+                    <div style="font-weight: 700; font-size: 10px; margin-top: 4px; border-top: 1px solid #1e293b; padding-top: 3px;">${item.petugas_lapangan || "Petugas Lapangan"}</div>
                 </div>
                 <div>
-                    <div style="font-size: 11px; font-weight: 600; text-transform: uppercase;">Penerima (Nasabah)</div>
-                    <div style="font-size: 9px; color: #64748b; margin-bottom: 4px;">(Digital/Otomatis)</div>
+                    <div style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Penerima (Nasabah)</div>
+                    <div style="font-size: 8.5px; color: #64748b; margin-bottom: 3px;">(Digital/Otomatis)</div>
                     ${ttdNasabahBase64
-                        ? `<img src="${ttdNasabahBase64}" alt="TTD Nasabah" style="width:100%; height:75px; object-fit:contain; border:1px solid #e2e8f0; border-radius:4px;">`
-                        : `<div style="height: 75px; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-style: italic; font-size: 10px;">Belum TTD</div>`
+                        ? `<img src="${ttdNasabahBase64}" alt="TTD Nasabah" style="width:100%; height:60px; object-fit:contain; border:1px solid #e2e8f0; border-radius:4px;">`
+                        : `<div style="height: 60px; border: 1px solid #e2e8f0; border-radius: 4px; background: #f8fafc; display: flex; align-items: center; justify-content: center; color: #94a3b8; font-style: italic; font-size: 9.5px;">Belum TTD</div>`
                     }
-                    <div style="font-weight: 700; font-size: 11px; margin-top: 6px; border-top: 1px solid #1e293b; padding-top: 4px;">${nasabah.nama_nasabah || "Nasabah"}</div>
+                    <div style="font-weight: 700; font-size: 10px; margin-top: 4px; border-top: 1px solid #1e293b; padding-top: 3px;">${nasabah.nama_nasabah || "Nasabah"}</div>
                 </div>
             </div>
 
-            <div style="margin-top: 16px; border-top: 1px solid #e2e8f0; padding-top: 8px; font-size: 10px; color: #94a3b8; text-align: center;">
+            <div style="margin-top: 12px; border-top: 1px solid #e2e8f0; padding-top: 6px; font-size: 9px; color: #94a3b8; text-align: center;">
                 Dicetak pada: ${tanggalCetak} &nbsp;|&nbsp; Sistem Monitoring Polis Asuransi
             </div>
         `;
@@ -1492,14 +1496,25 @@ async function downloadPDFNasabah(item) {
         const fileName = `Tanda_Terima_${safeName}_${safePk}.pdf`;
 
         const opt = {
-            margin: [8, 8, 8, 8],
+            margin: [6, 6, 6, 6],
             filename: fileName,
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, logging: false },
+            html2canvas: {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                scrollY: 0,
+                scrollX: 0,
+                windowWidth: 720
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
         };
 
         await html2pdf().set(opt).from(container).save();
+
+        if (container.parentNode) {
+            container.parentNode.removeChild(container);
+        }
 
         // Tandai sebagai sudah dicetak/didownload
         markItemAsPrinted(item.id, "Download PDF Nasabah");
