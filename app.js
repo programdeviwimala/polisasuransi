@@ -29,37 +29,92 @@ function savePrintTracker(tracker) {
     }
 }
 
-function getItemPrintStatus(itemId) {
-    if (!itemId) return { printed: false, shared: false };
+function getItemPrintStatus(itemOrId) {
+    if (!itemOrId) return { printed: false, shared: false };
+    
+    // Jika input berupa objek item data jaminan
+    if (typeof itemOrId === "object") {
+        const dbPrinted = !!itemOrId.is_printed;
+        const dbShared = !!itemOrId.is_shared;
+        const tracker = getPrintTracker();
+        const localStatus = tracker[itemOrId.id] || { printed: false, shared: false };
+        
+        return {
+            printed: dbPrinted || localStatus.printed || false,
+            print_type: itemOrId.print_type || localStatus.print_type || "Dokumen",
+            last_printed_at: itemOrId.last_printed_at || localStatus.last_printed_at || null,
+            shared: dbShared || localStatus.shared || false,
+            last_shared_at: itemOrId.last_shared_at || localStatus.last_shared_at || null
+        };
+    }
+
+    // Jika input berupa ID saja
     const tracker = getPrintTracker();
-    return tracker[itemId] || { printed: false, shared: false };
+    return tracker[itemOrId] || { printed: false, shared: false };
 }
 
-function markItemAsPrinted(itemId, jenis = "Cetak") {
+async function markItemAsPrinted(itemId, jenis = "Cetak") {
     if (!itemId) return;
+    const nowIso = new Date().toISOString();
+
+    // 1. Simpan di Local Storage
     const tracker = getPrintTracker();
     const existing = tracker[itemId] || {};
     tracker[itemId] = {
         ...existing,
         printed: true,
         print_type: jenis,
-        last_printed_at: new Date().toISOString()
+        last_printed_at: nowIso
     };
     savePrintTracker(tracker);
     refreshPrintStatusUI(itemId);
+
+    // 2. Simpan permanen ke Supabase Database
+    try {
+        if (supabaseClient) {
+            await supabaseClient
+                .from("jaminan_polis")
+                .update({
+                    is_printed: true,
+                    print_type: jenis,
+                    last_printed_at: nowIso
+                })
+                .eq("id", itemId);
+        }
+    } catch (e) {
+        console.warn("Update status cetak ke Supabase:", e);
+    }
 }
 
-function markItemAsShared(itemId) {
+async function markItemAsShared(itemId) {
     if (!itemId) return;
+    const nowIso = new Date().toISOString();
+
+    // 1. Simpan di Local Storage
     const tracker = getPrintTracker();
     const existing = tracker[itemId] || {};
     tracker[itemId] = {
         ...existing,
         shared: true,
-        last_shared_at: new Date().toISOString()
+        last_shared_at: nowIso
     };
     savePrintTracker(tracker);
     refreshPrintStatusUI(itemId);
+
+    // 2. Simpan permanen ke Supabase Database
+    try {
+        if (supabaseClient) {
+            await supabaseClient
+                .from("jaminan_polis")
+                .update({
+                    is_shared: true,
+                    last_shared_at: nowIso
+                })
+                .eq("id", itemId);
+        }
+    } catch (e) {
+        console.warn("Update status share ke Supabase:", e);
+    }
 }
 
 function refreshPrintStatusUI(itemId) {
@@ -76,7 +131,7 @@ function updatePrintBannerInModal(item) {
     const banner = document.getElementById("print-status-banner");
     if (!banner || !item) return;
 
-    const status = getItemPrintStatus(item.id);
+    const status = getItemPrintStatus(item);
     if (status.printed || status.shared) {
         banner.style.display = "block";
         let textParts = [];
@@ -496,7 +551,7 @@ async function fetchDataAdmin() {
                 tagClass = "tag-done";
             }
 
-            const printInfo = getItemPrintStatus(item.id);
+            const printInfo = getItemPrintStatus(item);
             let printBadgeHtml = "";
             if (printInfo.printed && printInfo.shared) {
                 printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0; margin-top:4px;">🖨️ Dicetak & 💬 Dishare</span>`;
@@ -808,7 +863,7 @@ async function fetchDataLapangan() {
                 tagClass = "tag-done";
             }
 
-            const printInfo = getItemPrintStatus(job.id);
+            const printInfo = getItemPrintStatus(job);
             let printBadgeHtml = "";
             if (printInfo.printed && printInfo.shared) {
                 printBadgeHtml = `<span class="badge-print-status" style="display:inline-flex; align-items:center; gap:4px; font-size:10.5px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 6px; border-radius:4px; border:1px solid #a7f3d0; margin-top:4px;">🖨️ Dicetak & 💬 Dishare</span>`;
@@ -1290,7 +1345,7 @@ async function getBase64ImageFromUrl(imageUrl) {
 }
 
 async function downloadPDFNasabah(item) {
-    const status = getItemPrintStatus(item.id);
+    const status = getItemPrintStatus(item);
     if (status.printed) {
         const nasabahNama = item.nasabah?.nama_nasabah || "Nasabah";
         const timeStr = formatTanggal(status.last_printed_at);
@@ -1476,7 +1531,7 @@ async function printTandaTerima(jenis, item) {
     if (!printArea) return;
 
     const nasabah = item.nasabah || {};
-    const status = getItemPrintStatus(item.id);
+    const status = getItemPrintStatus(item);
     if (status.printed) {
         const nasabahNama = nasabah.nama_nasabah || "Nasabah";
         const timeStr = formatTanggal(status.last_printed_at);
@@ -1652,7 +1707,7 @@ async function printTandaTerima(jenis, item) {
 // ==========================================
 async function kirimWhatsApp(item) {
     const nasabah = item.nasabah || {};
-    const status = getItemPrintStatus(item.id);
+    const status = getItemPrintStatus(item);
     if (status.shared) {
         const nasabahNama = nasabah.nama_nasabah || "Nasabah";
         const timeStr = formatTanggal(status.last_shared_at);
@@ -2459,7 +2514,7 @@ function renderLaporanTable() {
             statusBadge = '<span class="status-badge" style="background:#bbf7d0; color:#166534;">✅ Selesai</span>';
         }
 
-        const printInfo = getItemPrintStatus(item.id);
+        const printInfo = getItemPrintStatus(item);
         let printBadge = '';
         if (printInfo.printed && printInfo.shared) {
             printBadge = '<div style="margin-top:4px;"><span style="font-size:10px; font-weight:600; color:#065f46; background:#d1fae5; padding:2px 5px; border-radius:3px; border:1px solid #a7f3d0;">🖨️ Cetak & 💬 WA</span></div>';
